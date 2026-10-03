@@ -13,6 +13,20 @@ interface IKuruOrderBook {
         uint32 minSizeAfterBlock;
     }
 
+    struct PassiveMintParams {
+        uint32 lowPrice;
+        uint128 baseAmount;
+        uint128 quoteAmount;
+        uint128 minSharesOut;
+    }
+
+    struct PassiveMintResult {
+        uint64 positionId;
+        uint128 sharesOut;
+        uint128 baseUsed;
+        uint128 quoteUsed;
+    }
+
     struct PassivePositionView {
         uint40 ownerId;
         uint32 lowPrice;
@@ -44,6 +58,8 @@ interface IKuruOrderBook {
     function quoteTokenDecimals() external view returns (uint8);
     function minQuoteNotional() external view returns (uint96);
     function marketState() external view returns (uint8);
+    function makerFeePps() external view returns (uint256);
+    function passiveSpreadTicks() external view returns (uint32);
 
     function bestBidAsk() external view returns (uint32 bid, uint32 ask);
     function lastTradeObservation() external view returns (uint64 priceX8, uint32 timestamp);
@@ -78,6 +94,9 @@ interface IKuruOrderBook {
         uint128 minSharesOut,
         uint64 deadline
     ) external returns (uint64 positionId, uint128 sharesOut);
+    function batchMintPassiveLiquidity(uint40 userId, PassiveMintParams[] calldata mints, uint64 deadline)
+        external
+        returns (PassiveMintResult[] memory results);
     function burnPassiveLiquidity(uint40 userId, uint64 positionId, uint128 sharesToBurn)
         external
         returns (uint128 basePrincipalOut, uint128 quotePrincipalOut, uint128 baseFeeOut, uint128 quoteFeeOut);

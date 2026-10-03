@@ -28,6 +28,9 @@ runs = 5_000
 [rpc_endpoints]
 monad_testnet = "${MONAD_TESTNET_RPC_URL}"
 
+[lint]
+lint_on_build = false
+
 [fmt]
 line_length = 110
 tab_width = 4
