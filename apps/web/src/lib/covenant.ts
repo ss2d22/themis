@@ -1,6 +1,6 @@
 "use client";
 
-import { covenantAbi, MAX_SLOTS } from "@covenant/sdk";
+import { covenantAbi, kuruErrorName, MAX_SLOTS } from "@covenant/sdk";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { BaseError, ContractFunctionRevertedError } from "viem";
@@ -72,7 +72,8 @@ type Action =
 function revertReason(error: unknown): string {
   if (error instanceof BaseError) {
     const revert = error.walk((e) => e instanceof ContractFunctionRevertedError);
-    if (revert instanceof ContractFunctionRevertedError) return revert.data?.errorName ?? revert.shortMessage;
+    if (revert instanceof ContractFunctionRevertedError)
+      return revert.data?.errorName ?? kuruErrorName(revert.raw) ?? revert.shortMessage;
     return error.shortMessage;
   }
   return error instanceof Error ? error.message : String(error);
