@@ -1,4 +1,4 @@
-import { kuruErrorName } from "@covenant/sdk";
+import { errorNameIn, kuruErrorName } from "@covenant/sdk";
 import {
   type Abi,
   BaseError,
@@ -67,10 +67,10 @@ export function describeRevert(error: unknown): { reason: string; args?: readonl
   if (error instanceof BaseError) {
     const revert = error.walk((e) => e instanceof ContractFunctionRevertedError);
     if (revert instanceof ContractFunctionRevertedError) {
-      const name = revert.data?.errorName ?? kuruErrorName(revert.raw);
+      const name = revert.data?.errorName ?? kuruErrorName(revert.raw) ?? errorNameIn(revert.message);
       return { reason: name ?? revert.shortMessage, args: revert.data?.args };
     }
-    return { reason: error.shortMessage };
+    return { reason: errorNameIn(error.message) ?? error.shortMessage };
   }
   return { reason: String(error) };
 }
