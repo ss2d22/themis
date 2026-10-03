@@ -39,7 +39,7 @@ export function Terminal({ id }: { id: string }) {
     <div className="flex min-h-0 flex-1 flex-col">
       <TerminalHeader e={e} live={live.data} market={market} head={head} />
       <MetricStrip e={e} live={live.data} market={market} />
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_320px] grid-rows-[minmax(0,1fr)_260px] gap-px bg-line">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_320px] grid-rows-[minmax(0,1fr)_clamp(180px,28vh,300px)] gap-px bg-line">
         <Panel>
           <Tabs defaultValue="price" className="flex min-h-0 flex-1 flex-col">
             <TabsList

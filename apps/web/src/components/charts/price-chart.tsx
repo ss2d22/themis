@@ -50,6 +50,7 @@ export function PriceChart({ market, observations, fills, changes, strike }: Pro
     strike: IPriceLine | null;
   } | null>(null);
   const [hover, setHover] = useState<Readout | null>(null);
+  const fitted = useRef(false);
 
   const decimals = Math.max(0, Math.round(Math.log10(Number(market.pricePrecision))));
 
@@ -75,6 +76,7 @@ export function PriceChart({ market, observations, fills, changes, strike }: Pro
   useEffect(() => {
     if (!container.current || !colors) return;
     const c = createChart(container.current, chartOptions(colors));
+    c.priceScale("right").applyOptions({ scaleMargins: { top: 0.2, bottom: 0.08 } });
     const ref = c.addSeries(LineSeries, {
       color: colors.ink2,
       lineWidth: 2,
@@ -127,6 +129,7 @@ export function PriceChart({ market, observations, fills, changes, strike }: Pro
       });
     };
     c.subscribeCrosshairMove(onMove);
+    fitted.current = false;
     return () => {
       c.unsubscribeCrosshairMove(onMove);
       c.remove();
@@ -141,6 +144,11 @@ export function PriceChart({ market, observations, fills, changes, strike }: Pro
     s.ref.setData(data.ref);
     s.bid.setData(data.bid);
     s.ask.setData(data.ask);
+    // Fit the whole history once, then leave the viewport to the reader.
+    if (!fitted.current && data.ref.length > 0) {
+      chart.current?.timeScale().fitContent();
+      fitted.current = true;
+    }
     s.fills.setData(
       bySecond(
         data.fills.map((f) => ({ time: f.time, value: f.value, color: f.isBuy ? colors.bid : colors.ask })),

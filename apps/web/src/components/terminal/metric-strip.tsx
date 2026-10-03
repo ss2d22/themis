@@ -31,7 +31,9 @@ function Metric({
         display={value}
         className={cn("text-sm font-medium text-ink", breach && "text-critical")}
       />
-      <span className="truncate text-2xs text-ink-3">{sub}</span>
+      <span className="truncate text-2xs text-ink-3" title={typeof sub === "string" ? sub : undefined}>
+        {sub}
+      </span>
       {progress !== undefined ? (
         <span className="mt-1 h-[3px] w-full rounded-full bg-hover" aria-hidden>
           <span
@@ -80,18 +82,18 @@ export function MetricStrip({
         sub={`max ${allowed} bps${allowed !== ob.maxSpreadBps ? " (volatile)" : ""}`}
       />
       <Metric
-        label={`Bid depth ${market.quoteSymbol}`}
+        label="Bid depth"
         value={active ? q(bid) : "—"}
         numeric={Number(bid)}
         breach={active && bid < BigInt(ob.minBidDepth)}
-        sub={`min ${q(ob.minBidDepth)} within ±${ob.depthBandBps / 100}%`}
+        sub={`min ${q(ob.minBidDepth)} ${market.quoteSymbol} in ±${ob.depthBandBps / 100}%`}
       />
       <Metric
-        label={`Ask depth ${market.quoteSymbol}`}
+        label="Ask depth"
         value={active ? q(ask) : "—"}
         numeric={Number(ask)}
         breach={active && ask < BigInt(ob.minAskDepth)}
-        sub={`min ${q(ob.minAskDepth)} within ±${ob.depthBandBps / 100}%`}
+        sub={`min ${q(ob.minAskDepth)} ${market.quoteSymbol} in ±${ob.depthBandBps / 100}%`}
       />
       <Metric
         label="Uptime to date"
@@ -105,24 +107,24 @@ export function MetricStrip({
         value={`${e.failingStreak} of ${ob.sustainedBreachEpochs}`}
         numeric={e.failingStreak}
         breach={e.failingStreak > 0}
-        sub="failed in a row → clawback"
+        sub="failed epochs in a row"
       />
       <Metric
-        label={`Options vested ${market.baseSymbol}`}
+        label="Options vested"
         value={b(vested)}
         numeric={Number(vested)}
-        sub={`of ${b(options)} at ${(e.terms.strike / Number(market.pricePrecision)).toLocaleString("en-US")}`}
+        sub={`of ${b(options)} ${market.baseSymbol} @ ${(e.terms.strike / Number(market.pricePrecision)).toLocaleString("en-US")}`}
         progress={options > 0n ? Number(vested) / Number(options) : 0}
       />
       <Metric
-        label={`Retainer earned ${market.quoteSymbol}`}
+        label="Retainer earned"
         value={units(retainer, market.quoteDecimals)}
         numeric={Number(retainer)}
-        sub={`of ${q(e.terms.retainer)}`}
+        sub={`of ${q(e.terms.retainer)} ${market.quoteSymbol}`}
         progress={BigInt(e.terms.retainer) > 0n ? Number(retainer) / Number(e.terms.retainer) : 0}
       />
       <Metric
-        label={`Bond left ${market.quoteSymbol}`}
+        label="Bond left"
         value={active || e.status === 3 ? units(bondLeft, market.quoteDecimals) : "—"}
         numeric={Number(bondLeft)}
         sub={
@@ -139,10 +141,10 @@ export function MetricStrip({
         }
       />
       <Metric
-        label={`Net sold ${market.baseSymbol}`}
+        label="Net sold"
         value={active ? b(netSold) : "—"}
         numeric={Number(netSold)}
-        sub={`limit ${b(maxNetSell, 2)} per window`}
+        sub={`limit ${b(maxNetSell, 2)} ${market.baseSymbol} per window`}
         progress={active && maxNetSell > 0n ? Number(netSold) / Number(maxNetSell) : undefined}
       />
     </div>

@@ -138,10 +138,7 @@ export function ComplianceHeatmap({
           <span className="text-ink-4">· target {targetBps / 100}%</span>
         </span>
       </div>
-      <div
-        className="flex min-h-0 flex-1 flex-col justify-end gap-[2px]"
-        onPointerLeave={() => setHover(null)}
-      >
+      <div className="flex min-h-0 flex-1 flex-col gap-[2px] pt-1" onPointerLeave={() => setHover(null)}>
         {rows.map((row) => {
           const epoch = row[0]?.epoch ?? 0;
           const closed = byEpoch.get(epoch);
