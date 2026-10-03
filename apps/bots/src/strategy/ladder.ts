@@ -33,22 +33,26 @@ export function buildLadder(mid: bigint, cfg: LadderConfig, tick: bigint): Quote
   return quotes;
 }
 
-/** Shrinks ask sizes, deepest level first, so total ask size fits within `maxAskSize`. */
-export function capAsks(quotes: Quote[], maxAskSize: bigint): Quote[] {
-  let total = quotes.filter((q) => q.side === "sell").reduce((sum, q) => sum + q.size, 0n);
-  if (total <= maxAskSize) return quotes;
-  const asks = quotes.filter((q) => q.side === "sell").sort((a, b) => (a.price > b.price ? -1 : 1));
+/** Shrinks one side's sizes, deepest level first, so that side's total size fits within `maxSize`. */
+export function capSide(quotes: Quote[], side: Quote["side"], maxSize: bigint): Quote[] {
+  const levels = quotes
+    .filter((q) => q.side === side)
+    .sort((a, b) => (side === "sell" ? (a.price > b.price ? -1 : 1) : a.price < b.price ? -1 : 1));
+  let total = levels.reduce((sum, q) => sum + q.size, 0n);
+  if (total <= maxSize) return quotes;
   const trimmed = new Map<number, bigint>();
-  for (const ask of asks) {
-    if (total <= maxAskSize) break;
-    const cut = ask.size < total - maxAskSize ? ask.size : total - maxAskSize;
-    trimmed.set(ask.slot, ask.size - cut);
+  for (const level of levels) {
+    if (total <= maxSize) break;
+    const cut = level.size < total - maxSize ? level.size : total - maxSize;
+    trimmed.set(level.slot, level.size - cut);
     total -= cut;
   }
   return quotes
     .map((q) => (trimmed.has(q.slot) ? { ...q, size: trimmed.get(q.slot) ?? 0n } : q))
     .filter((q) => q.size > 0n);
 }
+
+export const capAsks = (quotes: Quote[], maxAskSize: bigint) => capSide(quotes, "sell", maxAskSize);
 
 /** Keeps quotes inside the escrow's price band so the whole batch is not rejected. */
 export function withinBand(quotes: Quote[], refPrice: bigint, bandBps: number): Quote[] {

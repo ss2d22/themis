@@ -10,6 +10,7 @@ import {
   type PresetName,
   presets,
   readMarketUnits,
+  Template,
 } from "@covenant/sdk";
 import {
   type Address,
@@ -56,11 +57,12 @@ function buildTerms(name: PresetName, u: MarketUnits, baseDecimals: number, mid:
   const p = presets[name];
   const base = (x: number) => parseUnits(String(x), baseDecimals);
   const quote = (x: number) => parseUnits(String(x), u.quoteDecimals);
+  const loan = p.template === Template.Buyback ? quote(p.loan) : base(p.loan);
   const strike = ((mid * BigInt(10_000 + p.strikePremiumBps)) / 10_000n / u.tickSize) * u.tickSize;
   return {
     market: u.market,
     maker,
-    loan: base(p.loan),
+    loan,
     makerCollateral: quote(p.makerCollateral),
     bond: quote(p.bond),
     options: base(p.options),
@@ -80,6 +82,7 @@ function buildTerms(name: PresetName, u: MarketUnits, baseDecimals: number, mid:
       maxPriceAge: 0,
     },
     termsHash: keccak256(toHex(`covenant:${name}:${u.market}:${mid}`)),
+    template: p.template,
   } as const;
 }
 

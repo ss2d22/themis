@@ -6,6 +6,7 @@ import {
   kuruTestnet,
   quoteForSize,
   readMarketUnits,
+  Template,
   toRawSize,
 } from "@covenant/sdk";
 import type { Address, Hex } from "viem";
@@ -15,7 +16,7 @@ import { CovenantReader, Status } from "../covenant.js";
 import type { Logger } from "../log.js";
 import { externalMid } from "../strategy/fair.js";
 import { capBids, skewedMid } from "../strategy/inventory.js";
-import { buildLadder, capAsks, planRequote, withinBand } from "../strategy/ladder.js";
+import { buildLadder, capAsks, capSide, planRequote, withinBand } from "../strategy/ladder.js";
 import { sleep } from "../time.js";
 
 export interface MarketMakerOptions {
@@ -66,10 +67,11 @@ export async function runMarketMaker(config: Config, log: Logger, options = defa
     }
 
     const core = { address: kuruTestnet.accountCore, abi: kuruAccountCoreAbi } as const;
-    const [live, book, netSold, metrics, freeBase, freeQuote, reserves] = await Promise.all([
+    const [live, book, netSold, netBought, metrics, freeBase, freeQuote, reserves] = await Promise.all([
       reader.liveSlots(id, market, e.account, e.liveMask),
       client.readContract({ address: market, abi: kuruOrderBookAbi, functionName: "getL2Book", args: [10n] }),
       reader.netSold(id),
+      reader.netBought(id),
       reader.metrics(id),
       client.readContract({ ...core, functionName: "getBalance", args: [e.account, units.base] }),
       client.readContract({ ...core, functionName: "getBalance", args: [e.account, units.quote] }),
@@ -91,9 +93,17 @@ export async function runMarketMaker(config: Config, log: Logger, options = defa
     const headroom = e.terms.risk.maxNetSell > netSold ? e.terms.risk.maxNetSell - netSold : 0n;
     const sellable = headroom < baseHeld ? headroom : baseHeld;
     const maxAskSize = (sellable * 9n) / 10n / units.baseSizeMultiplier;
+    const template = e.terms.template as Template;
+    const sides =
+      template === Template.Buyback
+        ? ["buy"]
+        : template === Template.Distribution
+          ? ["sell"]
+          : ["buy", "sell"];
+    const buyRoom = e.terms.risk.maxNetSell > netBought ? e.terms.risk.maxNetSell - netBought : 0n;
     const withFee = (q: { size: bigint; price: bigint }) =>
       (quoteForSize(q.size, q.price, units) * 10_010n) / 10_000n;
-    const desired = capBids(
+    const ladder = capBids(
       capAsks(
         withinBand(
           buildLadder(mid, { ...options, sizePerLevel: size }, units.tickSize),
@@ -105,6 +115,12 @@ export async function runMarketMaker(config: Config, log: Logger, options = defa
       (quoteHeld * 95n) / 100n,
       withFee,
     );
+    // One-sided templates only admit one side; buybacks also pace the base they buy.
+    const sided = ladder.filter((q) => sides.includes(q.side));
+    const desired =
+      template === Template.Buyback
+        ? capSide(sided, "buy", (buyRoom * 9n) / 10n / units.baseSizeMultiplier)
+        : sided;
 
     // Partial fills shrink orders without freeing their slots, so top a side up when its depth runs low.
     const buffered = (target: bigint) => (target * (10_000n + options.depthBufferBps)) / 10_000n;

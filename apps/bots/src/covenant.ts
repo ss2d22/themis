@@ -43,6 +43,15 @@ export class CovenantReader {
     });
   }
 
+  netBought(id: bigint) {
+    return this.client.readContract({
+      address: this.address,
+      abi: covenantAbi,
+      functionName: "netBought",
+      args: [id],
+    });
+  }
+
   netSold(id: bigint) {
     return this.client.readContract({
       address: this.address,
