@@ -49,7 +49,7 @@ describe("kuruErrorName", () => {
 
   it("finds escrow errors in raw failure messages", async () => {
     const { errorNameIn } = await import("../src/errors");
-    expect(errorNameIn('reverted with the following signature:\n0xbbf16ae5')).toBe("QuoteTooYoung");
+    expect(errorNameIn("reverted with the following signature:\n0xbbf16ae5")).toBe("QuoteTooYoung");
     expect(errorNameIn("no selector here")).toBeUndefined();
   });
 });
