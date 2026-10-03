@@ -1,10 +1,20 @@
-import { covenantAbi, encodeOps, kuruOrderBookAbi, readMarketUnits, toRawSize } from "@covenant/sdk";
+import {
+  covenantAbi,
+  encodeOps,
+  kuruAccountCoreAbi,
+  kuruOrderBookAbi,
+  kuruTestnet,
+  quoteForSize,
+  readMarketUnits,
+  toRawSize,
+} from "@covenant/sdk";
 import type { Address, Hex } from "viem";
 import { publicClientFor, send, walletFor } from "../chain.js";
 import { type Config, required } from "../config.js";
 import { CovenantReader, Status } from "../covenant.js";
 import type { Logger } from "../log.js";
 import { externalMid } from "../strategy/fair.js";
+import { capBids, skewedMid } from "../strategy/inventory.js";
 import { buildLadder, capAsks, planRequote, withinBand } from "../strategy/ladder.js";
 import { sleep } from "../time.js";
 
@@ -15,6 +25,8 @@ export interface MarketMakerOptions {
   sizePerLevel: number;
   toleranceBps: number;
   depthBufferBps: bigint;
+  skewBpsPerLoan: number;
+  maxSkewBps: number;
   heartbeatBlocks: bigint;
   intervalMs: number;
 }
@@ -26,6 +38,8 @@ export const defaultMarketMaker: MarketMakerOptions = {
   sizePerLevel: 0.08,
   toleranceBps: 3,
   depthBufferBps: 2_000n,
+  skewBpsPerLoan: 20,
+  maxSkewBps: 25,
   heartbeatBlocks: 100n,
   intervalMs: 1_200,
 };
@@ -51,25 +65,45 @@ export async function runMarketMaker(config: Config, log: Logger, options = defa
       return;
     }
 
-    const [live, book, netSold, metrics] = await Promise.all([
+    const core = { address: kuruTestnet.accountCore, abi: kuruAccountCoreAbi } as const;
+    const [live, book, netSold, metrics, freeBase, freeQuote, reserves] = await Promise.all([
       reader.liveSlots(id, market, e.account, e.liveMask),
       client.readContract({ address: market, abi: kuruOrderBookAbi, functionName: "getL2Book", args: [10n] }),
       reader.netSold(id),
       reader.metrics(id),
+      client.readContract({ ...core, functionName: "getBalance", args: [e.account, units.base] }),
+      client.readContract({ ...core, functionName: "getBalance", args: [e.account, units.quote] }),
+      client.readContract({
+        address: market,
+        abi: kuruOrderBookAbi,
+        functionName: "makerLockedReserves",
+        args: [e.account],
+      }),
     ]);
     const [bidPrices, bidSizes, askPrices, askSizes] = book;
     const refPrice = BigInt(e.refPrice);
-    const mid = externalMid({ bidPrices, bidSizes, askPrices, askSizes }, live) ?? refPrice;
+    // Replacing quotes releases their reserves first, so held inventory is free balance plus what is resting.
+    const baseHeld = freeBase + reserves[0];
+    const quoteHeld = freeQuote + reserves[1];
+    const fair = externalMid({ bidPrices, bidSizes, askPrices, askSizes }, live) ?? refPrice;
+    const mid = skewedMid(fair, baseHeld, e.terms.loan, options.skewBpsPerLoan, options.maxSkewBps);
 
     const headroom = e.terms.risk.maxNetSell > netSold ? e.terms.risk.maxNetSell - netSold : 0n;
-    const maxAskSize = (headroom * 9n) / 10n / units.baseSizeMultiplier;
-    const desired = capAsks(
-      withinBand(
-        buildLadder(mid, { ...options, sizePerLevel: size }, units.tickSize),
-        refPrice,
-        e.terms.risk.priceBandBps - 10,
+    const sellable = headroom < baseHeld ? headroom : baseHeld;
+    const maxAskSize = (sellable * 9n) / 10n / units.baseSizeMultiplier;
+    const withFee = (q: { size: bigint; price: bigint }) =>
+      (quoteForSize(q.size, q.price, units) * 10_010n) / 10_000n;
+    const desired = capBids(
+      capAsks(
+        withinBand(
+          buildLadder(mid, { ...options, sizePerLevel: size }, units.tickSize),
+          refPrice,
+          e.terms.risk.priceBandBps - 10,
+        ),
+        maxAskSize,
       ),
-      maxAskSize,
+      (quoteHeld * 95n) / 100n,
+      withFee,
     );
 
     // Partial fills shrink orders without freeing their slots, so top a side up when its depth runs low.
@@ -91,6 +125,7 @@ export async function runMarketMaker(config: Config, log: Logger, options = defa
         ...plan,
         refresh: [...refresh],
         mid: mid.toString(),
+        fair: fair.toString(),
         block,
       });
     } else if (block - e.lastObsBlock >= options.heartbeatBlocks) {
