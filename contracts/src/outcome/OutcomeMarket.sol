@@ -121,7 +121,7 @@ contract OutcomeMarket is ReentrancyGuard {
 
     /// @notice Resolves once the period has ended, observing the escrow first if needed. A clawback before the
     ///         period ends resolves to BROKEN. Credit that was never observed counts as missed.
-    function resolve(uint256 marketId) external {
+    function resolve(uint256 marketId) external nonReentrant {
         Market storage m = _markets[marketId];
         if (m.outcome != Outcome.Open) revert NotOpen();
 
