@@ -9,8 +9,7 @@ cache/
 *.tsbuildinfo
 
 # foundry
-contracts/broadcast/*/31337/
-contracts/broadcast/**/dry-run/
+contracts/broadcast/
 
 # env
 .env
@@ -33,6 +32,7 @@ notes/
 
 # local deployments
 contracts/deployments/31337.json
+contracts/deployments/local.json
 
 # bot output
 logs/
