@@ -38,3 +38,12 @@ describe("codec", () => {
     expect(() => encodeQuote({ slot: 0, side: "buy", price: 0n, size: 1n })).toThrow(RangeError);
   });
 });
+
+describe("kuruErrorName", () => {
+  it("names Kuru errors from raw revert data", async () => {
+    const { kuruErrorName } = await import("../src/errors");
+    expect(kuruErrorName("0xf4d678b8")).toBe("InsufficientBalance");
+    expect(kuruErrorName("0xdeadbeef")).toBeUndefined();
+    expect(kuruErrorName(undefined)).toBeUndefined();
+  });
+});
