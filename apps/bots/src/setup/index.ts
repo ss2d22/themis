@@ -84,7 +84,13 @@ function buildTerms(name: PresetName, u: MarketUnits, baseDecimals: number, mid:
 }
 
 /** Issuer proposes from a preset, the market maker accepts and commits to a refresh policy. */
-export async function setupEngagement(config: Config, log: Logger, preset: PresetName, adversary: boolean) {
+export async function setupEngagement(
+  config: Config,
+  log: Logger,
+  preset: PresetName,
+  adversary: boolean,
+  pending = false,
+) {
   const client = publicClientFor(config.RPC_URL);
   const covenant = required(config, "COVENANT_ADDRESS");
   const issuer = walletFor(config.RPC_URL, required(config, "ISSUER_KEY"));
@@ -121,6 +127,13 @@ export async function setupEngagement(config: Config, log: Logger, preset: Prese
     abi: covenantAbi,
     functionName: "engagementCount",
   });
+  if (pending) {
+    log.info(
+      { id: id.toString(), preset, propose: proposal.hash },
+      "engagement proposed, awaiting acceptance",
+    );
+    return id;
+  }
 
   const accepted = await send(client, maker, {
     address: covenant,

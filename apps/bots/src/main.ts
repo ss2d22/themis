@@ -15,7 +15,7 @@ const usage = `usage: pnpm start <command> [options]
   taker                       run random taker flow
   watchtower                  enforce every engagement for bounties
 
-  setup engagement [--preset launch|demo] [--adversary]
+  setup engagement [--preset launch|exchangeGrade|demo] [--adversary] [--pending]
   setup taker [--base 1] [--quote 3000]
   setup outcome --engagement <id> --first <epoch> --count <n>
   setup fund-fork             local anvil fork only
@@ -30,6 +30,7 @@ async function main() {
       engagement: { type: "string" },
       preset: { type: "string", default: "launch" },
       adversary: { type: "boolean", default: false },
+      pending: { type: "boolean", default: false },
       onchain: { type: "boolean", default: false },
       base: { type: "string", default: "1" },
       quote: { type: "string", default: "3000" },
@@ -58,7 +59,13 @@ async function main() {
     case "setup":
       switch (sub) {
         case "engagement":
-          return void (await setupEngagement(config, log, values.preset as PresetName, values.adversary));
+          return void (await setupEngagement(
+            config,
+            log,
+            values.preset as PresetName,
+            values.adversary,
+            values.pending,
+          ));
         case "taker":
           return setupTaker(config, log, Number(values.base), Number(values.quote));
         case "outcome":
