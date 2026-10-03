@@ -278,7 +278,11 @@ function Ticket({ row }: { row: Row }) {
 
 function Balance({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col rounded-sm border border-line px-2 py-1.5">
+    <div
+      role="group"
+      aria-label={`${label} balance`}
+      className="flex flex-col rounded-sm border border-line px-2 py-1.5"
+    >
       <span className="text-2xs text-ink-3">{label}</span>
       <span className="num text-ink">{value}</span>
     </div>
