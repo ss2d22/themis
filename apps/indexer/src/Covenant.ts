@@ -192,6 +192,7 @@ ponder.on("Covenant:Settled", async ({ event, context }) => {
 ponder.on("Covenant:ClawedBack", async ({ event, context }) => {
   await context.db.update(engagement, { id: event.args.id }).set({
     status: Status.ClawedBack,
+    endBlock: event.block.number,
     settlement: plain(event.args.result),
     backstopPosition: event.args.backstopPosition,
     closedAt: event.block.timestamp,
