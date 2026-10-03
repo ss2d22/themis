@@ -13,6 +13,11 @@ interface IKuruOrderBook {
         uint32 minSizeAfterBlock;
     }
 
+    struct SwapResult {
+        uint128 amountInUsed;
+        uint128 amountOut;
+    }
+
     struct PassiveMintParams {
         uint32 lowPrice;
         uint128 baseAmount;
@@ -82,6 +87,7 @@ interface IKuruOrderBook {
     function replaceBySlotPacked(uint40 userId, bytes calldata packedOps) external;
     function cancelAllOrders(uint40 userId) external;
 
+    function estimateSwap(bool isBuy, uint128 amountIn) external view returns (SwapResult memory result);
     function swap(uint40 userId, bool isBuy, uint128 amountIn, uint128 minAmountOut, uint64 deadline)
         external
         returns (uint128 amountInUsed, uint128 amountOut);

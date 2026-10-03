@@ -230,6 +230,42 @@ export const kuruOrderBookAbi = [
   },
   {
     "type": "function",
+    "name": "estimateSwap",
+    "inputs": [
+      {
+        "name": "isBuy",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "amountIn",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "tuple",
+        "internalType": "struct IKuruOrderBook.SwapResult",
+        "components": [
+          {
+            "name": "amountInUsed",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "amountOut",
+            "type": "uint128",
+            "internalType": "uint128"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getL2Book",
     "inputs": [
       {
