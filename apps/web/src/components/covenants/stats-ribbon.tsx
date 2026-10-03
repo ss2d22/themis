@@ -16,7 +16,7 @@ function Tile({
   sub?: string;
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5 px-4 py-2.5">
+    <div className="flex min-w-0 flex-col gap-0.5 bg-panel px-4 py-2.5">
       <span className="label">{label}</span>
       <span className="text-[17px] leading-6 font-medium text-ink">
         <Num value={value} display={display} className="font-sans" />
@@ -31,7 +31,7 @@ export function StatsRibbon() {
   const s = data;
   const credited = s ? Number(s.blocksCredited) : 0;
   return (
-    <div className="grid shrink-0 grid-cols-7 divide-x divide-line border-b border-line bg-panel">
+    <div className="grid shrink-0 grid-cols-2 gap-px border-b border-line bg-line sm:grid-cols-4 xl:grid-cols-7 max-xl:[&>*:last-child]:col-span-2">
       <Tile
         label="Covenants"
         value={s?.engagements ?? 0}

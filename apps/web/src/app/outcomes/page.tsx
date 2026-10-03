@@ -310,8 +310,8 @@ export default function OutcomesPage() {
         title="Outcome markets"
         description="KEPT and BROKEN tokens on whether a market maker keeps its covenant. They price the promise, hedge it, and settle from the escrow ledger."
       />
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_360px] gap-px bg-line">
-        <Panel>
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-px overflow-auto bg-line lg:grid-cols-[minmax(0,1fr)_360px] lg:overflow-hidden">
+        <Panel className="min-h-[280px] lg:min-h-0">
           {outcomes.error ? (
             <ErrorState error={outcomes.error} />
           ) : outcomes.isLoading ? (

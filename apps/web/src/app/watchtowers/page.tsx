@@ -71,8 +71,8 @@ export default function WatchtowersPage() {
         title="Watchtowers"
         description="Anyone can enforce a covenant. Reporting a breach, closing a failed epoch or clawing back pays a bounty from the market maker’s bond."
       />
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_380px] gap-px bg-line">
-        <Panel>
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-px overflow-auto bg-line lg:grid-cols-[minmax(0,1fr)_380px] lg:overflow-hidden">
+        <Panel className="min-h-[280px] lg:min-h-0">
           <PanelHeader title="Earnings" meta="bounties paid on chain" />
           {watchers.error ? (
             <ErrorState error={watchers.error} />

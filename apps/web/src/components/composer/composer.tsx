@@ -226,7 +226,7 @@ export function Composer() {
     market ? (v / Number(market.pricePrecision)).toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—";
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,620px)_minmax(0,1fr)] gap-px bg-line">
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-px overflow-auto bg-line lg:grid-cols-[minmax(0,620px)_minmax(0,1fr)] lg:overflow-hidden">
       <Panel>
         <div className="flex h-11 shrink-0 items-center gap-3 border-b border-line px-4">
           <span className="text-xs text-ink-3">Start from</span>

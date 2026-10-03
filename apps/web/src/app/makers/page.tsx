@@ -116,8 +116,8 @@ export default function MakersPage() {
         title="Maker ratings"
         description="Every grade comes from uptime the escrow measured against the Kuru book, not from data the market maker chose to share."
       />
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_260px] gap-px bg-line">
-        <section className="flex min-h-0 flex-col bg-panel">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-px overflow-auto bg-line lg:grid-cols-[minmax(0,1fr)_260px] lg:overflow-hidden">
+        <section className="flex min-h-[320px] flex-col bg-panel lg:min-h-0">
           {makers.error ? (
             <ErrorState error={makers.error} />
           ) : makers.isLoading ? (

@@ -24,7 +24,7 @@ function Metric({
   progress?: number;
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5 px-3 py-2">
+    <div className="flex min-w-0 flex-col gap-0.5 bg-panel px-3 py-2">
       <span className="label truncate">{label}</span>
       <Num
         value={numeric}
@@ -73,7 +73,7 @@ export function MetricStrip({
   const maxNetSell = BigInt(e.terms.risk.maxNetSell);
 
   return (
-    <div className="grid shrink-0 grid-cols-9 divide-x divide-line border-b border-line bg-panel">
+    <div className="grid shrink-0 grid-cols-2 gap-px border-b border-line bg-line sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 max-sm:[&>*:last-child]:col-span-2 lg:max-xl:[&>*:last-child]:col-span-2">
       <Metric
         label="Spread"
         value={active && m && m.bestBid > 0 ? `${spread} bps` : "—"}

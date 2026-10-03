@@ -4,8 +4,11 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { env } from "./env";
 import type { Engagement, MakerRow, OutcomeMarket, Report, Stats, WatcherRow } from "./types";
 
+export class NotFoundError extends Error {}
+
 async function get<T>(path: string): Promise<T> {
   const response = await fetch(`${env.indexerUrl}${path}`, { cache: "no-store" });
+  if (response.status === 404) throw new NotFoundError(path);
   if (!response.ok) throw new Error(`${path} returned ${response.status}`);
   return response.json() as Promise<T>;
 }
@@ -16,7 +19,12 @@ export const useStats = () => useQuery({ queryKey: ["stats"], queryFn: () => get
 export const useEngagements = () =>
   useQuery({ queryKey: ["engagements"], queryFn: () => get<Engagement[]>("/engagements"), ...live });
 export const useReport = (id: string) =>
-  useQuery({ queryKey: ["report", id], queryFn: () => get<Report>(`/engagements/${id}`), ...live });
+  useQuery({
+    queryKey: ["report", id],
+    queryFn: () => get<Report>(`/engagements/${id}`),
+    ...live,
+    retry: (count, error) => !(error instanceof NotFoundError) && count < 2,
+  });
 export const useMakers = () =>
   useQuery({ queryKey: ["makers"], queryFn: () => get<MakerRow[]>("/makers"), ...live });
 export const useWatchers = () =>

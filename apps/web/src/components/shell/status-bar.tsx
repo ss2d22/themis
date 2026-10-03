@@ -20,14 +20,14 @@ export function StatusBar() {
           className={cn("size-1.5 rounded-full", healthy ? "animate-pulse-dot bg-good" : "bg-critical")}
           aria-hidden
         />
-        Monad testnet
+        <span className="hidden sm:inline">Monad testnet</span>
       </span>
       <span className="num">block {head.data ? head.data.block.toLocaleString("en-US") : "—"}</span>
-      <span className="num">rpc {head.data ? `${head.data.latencyMs}ms` : "—"}</span>
+      <span className="num hidden sm:inline">rpc {head.data ? `${head.data.latencyMs}ms` : "—"}</span>
       <span className={cn("num", stats.isError && "text-critical")}>
         indexer {stats.isError ? "offline" : stats.data ? "live" : "…"}
       </span>
-      <div className="ml-auto flex items-center gap-4">
+      <div className="ml-auto hidden items-center gap-4 md:flex">
         <Tooltip content="Swap bid and ask to a blue/orange pair that stays distinct for colour-blind readers.">
           <button
             type="button"

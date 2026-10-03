@@ -1,8 +1,9 @@
 "use client";
 
-import { Moon, Plus, Search, Sun } from "lucide-react";
+import { Menu, Moon, Plus, Search, Sun } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { DropdownMenu } from "radix-ui";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 import { Kbd } from "@/components/ui/kbd";
@@ -31,7 +32,35 @@ export function TopBar({ onSearch }: { onSearch: () => void }) {
         <Logo />
         Covenant
       </Link>
-      <nav className="flex h-full items-stretch" aria-label="Primary">
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <Button size="sm" variant="ghost" className="md:hidden" aria-label="Open navigation">
+            <Menu size={14} />
+          </Button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="start"
+            sideOffset={6}
+            className="z-50 min-w-48 rounded-sm bg-raised p-1 shadow-pop"
+          >
+            {nav.map((item) => (
+              <DropdownMenu.Item key={item.href} asChild>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "flex h-8 items-center rounded-xs px-2 text-sm text-ink-2 outline-none data-[highlighted]:bg-hover",
+                    active(item.href) && "text-ink",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              </DropdownMenu.Item>
+            ))}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+      <nav className="hidden h-full items-stretch md:flex" aria-label="Primary">
         {nav.map((item) => (
           <Link
             key={item.href}
@@ -47,10 +76,13 @@ export function TopBar({ onSearch }: { onSearch: () => void }) {
         ))}
       </nav>
       <div className="ml-auto flex items-center gap-1.5">
+        <Button size="sm" variant="ghost" className="lg:hidden" aria-label="Search" onClick={onSearch}>
+          <Search size={13} />
+        </Button>
         <button
           type="button"
           onClick={onSearch}
-          className="flex h-6 w-60 items-center gap-2 rounded-sm border border-line bg-bg px-2 text-xs whitespace-nowrap text-ink-3 hover:border-line-strong"
+          className="hidden h-6 w-60 items-center lg:flex gap-2 rounded-sm border border-line bg-bg px-2 text-xs whitespace-nowrap text-ink-3 hover:border-line-strong"
         >
           <Search size={12} />
           Search covenants and makers
@@ -61,7 +93,7 @@ export function TopBar({ onSearch }: { onSearch: () => void }) {
         </button>
         <Link href="/new">
           <Button size="sm" variant="primary">
-            <Plus size={13} /> New covenant
+            <Plus size={13} /> <span className="hidden sm:inline">New covenant</span>
           </Button>
         </Link>
         <Button

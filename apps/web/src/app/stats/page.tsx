@@ -40,11 +40,11 @@ export default function StatsPage() {
       <StatsRibbon />
       <div
         className={cn(
-          "grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-px bg-line transition-opacity",
+          "grid min-h-0 flex-1 grid-cols-1 gap-px overflow-auto bg-line lg:grid-cols-2 lg:grid-rows-2 lg:overflow-hidden transition-opacity",
           series.isFetching && !d && "opacity-60",
         )}
       >
-        <Panel>
+        <Panel className="h-[320px] lg:h-auto">
           <ActivityChart
             title="Fills against covenant quotes"
             unit="fills"
@@ -53,7 +53,7 @@ export default function StatsPage() {
             format={count}
           />
         </Panel>
-        <Panel>
+        <Panel className="h-[320px] lg:h-auto">
           <ActivityChart
             title="Liquidity time credited"
             unit="min"
@@ -62,7 +62,7 @@ export default function StatsPage() {
             format={minutes}
           />
         </Panel>
-        <Panel>
+        <Panel className="h-[320px] lg:h-auto">
           <ActivityChart
             title="Quote updates through the gate"
             unit="updates"
@@ -71,7 +71,7 @@ export default function StatsPage() {
             format={count}
           />
         </Panel>
-        <Panel>
+        <Panel className="h-[320px] lg:h-auto">
           <ActivityChart
             title="Breaches recorded"
             unit="breaches"

@@ -209,14 +209,14 @@ export function CovenantGrid() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-panel">
-      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-line px-3">
+      <div className="flex h-9 shrink-0 items-center gap-1 overflow-x-auto border-b border-line px-3">
         {views.map((v) => (
           <button
             key={v}
             type="button"
             onClick={() => setView(v)}
             className={cn(
-              "flex h-6 items-center gap-1.5 rounded-sm px-2 text-xs font-medium capitalize",
+              "flex h-6 shrink-0 items-center gap-1.5 rounded-sm px-2 text-xs font-medium whitespace-nowrap capitalize",
               view === v ? "bg-active text-ink" : "text-ink-3 hover:bg-hover hover:text-ink-2",
             )}
           >
@@ -224,7 +224,9 @@ export function CovenantGrid() {
             <span className="num text-2xs text-ink-4">{counts[v]}</span>
           </button>
         ))}
-        <span className="ml-auto text-xs text-ink-3">Click a row for the live report card</span>
+        <span className="ml-auto hidden text-xs text-ink-3 sm:inline">
+          Click a row for the live report card
+        </span>
       </div>
       {error ? (
         <ErrorState error={error} />

@@ -78,7 +78,7 @@ export function TerminalHeader({
     available.push({ action: "releaseBackstop", hint: "Withdraws the backstop after its lock." });
 
   return (
-    <div className="flex h-12 shrink-0 items-center gap-4 border-b border-line bg-panel px-3">
+    <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-line bg-panel px-3 py-2">
       <nav className="flex items-center gap-1 text-xs text-ink-3" aria-label="Breadcrumb">
         <Link href="/" className="hover:text-ink-2">
           Covenants

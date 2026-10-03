@@ -66,8 +66,8 @@ const rules: [string, string][] = [
 export default function DocsPage() {
   return (
     <div className="min-h-0 flex-1 overflow-auto">
-      <div className="mx-auto grid max-w-[1080px] grid-cols-[200px_minmax(0,1fr)] gap-12 px-6 py-8">
-        <nav className="sticky top-8 flex h-fit flex-col gap-1 text-sm" aria-label="On this page">
+      <div className="mx-auto grid max-w-[1080px] grid-cols-1 gap-12 px-4 py-6 lg:grid-cols-[200px_minmax(0,1fr)] lg:px-6 lg:py-8">
+        <nav className="sticky top-8 hidden h-fit flex-col gap-1 text-sm lg:flex" aria-label="On this page">
           <span className="label mb-2">On this page</span>
           {sections.map(([id, title]) => (
             <a key={id} href={`#${id}`} className="py-0.5 text-ink-3 hover:text-ink">
