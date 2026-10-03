@@ -1,0 +1,208 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Surfaces step up from the page plane: bg < panel < raised. Hairlines are one shade off the surface they
+ * divide. Bid, ask and status colours were checked with the palette validator against the panel surface in
+ * both themes; bid/ask always also differ by position and label.
+ */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d0d0c;
+  --panel: #151514;
+  --raised: #1c1c1a;
+  --hover: #232321;
+  --active: #2a2a27;
+  --line: #262624;
+  --line-strong: #383835;
+  --ink: #f1f0ea;
+  --ink-2: #c3c2b7;
+  --ink-3: #8a8982;
+  --ink-4: #5f5e59;
+  --accent: #3987e5;
+  --accent-soft: rgb(57 135 229 / 0.14);
+  --bid: #199e70;
+  --bid-soft: rgb(25 158 112 / 0.14);
+  --ask: #e66767;
+  --ask-soft: rgb(230 103 103 / 0.14);
+  --good: #0ca30c;
+  --warn: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --critical-soft: rgb(208 59 59 / 0.16);
+  --good-soft: rgb(12 163 12 / 0.14);
+  --diverge-mid: #383835;
+  --shadow: 0 8px 24px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f4f1;
+  --panel: #fcfcfb;
+  --raised: #ffffff;
+  --hover: #f0efec;
+  --active: #e8e7e2;
+  --line: #e4e3dd;
+  --line-strong: #c9c8c0;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-3: #75746f;
+  --ink-4: #a3a29b;
+  --accent: #2a78d6;
+  --accent-soft: rgb(42 120 214 / 0.1);
+  --bid: #128a5f;
+  --bid-soft: rgb(27 175 122 / 0.12);
+  --ask: #d23f3e;
+  --ask-soft: rgb(227 73 72 / 0.1);
+  --critical-soft: rgb(208 59 59 / 0.1);
+  --good-soft: rgb(12 163 12 / 0.1);
+  --diverge-mid: #e4e3dd;
+  --shadow: 0 8px 24px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.08);
+}
+
+:root[data-palette="cvd"] {
+  --bid: #3987e5;
+  --bid-soft: rgb(57 135 229 / 0.14);
+  --ask: #d95926;
+  --ask-soft: rgb(217 89 38 / 0.14);
+}
+
+:root[data-palette="cvd"][data-theme="light"] {
+  --bid: #2a78d6;
+  --ask: #c4501f;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-hover: var(--hover);
+  --color-active: var(--active);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-bid: var(--bid);
+  --color-bid-soft: var(--bid-soft);
+  --color-ask: var(--ask);
+  --color-ask-soft: var(--ask-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-serious: var(--serious);
+  --color-critical: var(--critical);
+  --color-critical-soft: var(--critical-soft);
+
+  --font-sans: var(--font-plex-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --text-2xs: 10.5px;
+  --text-2xs--line-height: 14px;
+  --text-xs: 11.5px;
+  --text-xs--line-height: 16px;
+  --text-sm: 13px;
+  --text-sm--line-height: 18px;
+  --text-base: 14px;
+  --text-base--line-height: 20px;
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  --shadow-pop: var(--shadow);
+
+  --animate-flash-up: flash-up 900ms ease-out;
+  --animate-flash-down: flash-down 900ms ease-out;
+  --animate-pulse-dot: pulse-dot 1.6s ease-in-out infinite;
+}
+
+@keyframes flash-up {
+  from {
+    background-color: var(--bid-soft);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+@keyframes flash-down {
+  from {
+    background-color: var(--ask-soft);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 18px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+}
+
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+@utility label {
+  font-size: 10.5px;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must beat component animations */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must beat component transitions */
+    transition-duration: 0.01ms !important;
+  }
+}
