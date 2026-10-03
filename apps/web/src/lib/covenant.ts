@@ -29,7 +29,7 @@ export function useLiveCovenant(id: bigint) {
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const c = covenant();
-      const [engagement, metrics, vested, retainerEarned, netSold] = await publicClient.multicall({
+      const [engagement, metrics, vested, retainerEarned, netSold, netBought] = await publicClient.multicall({
         allowFailure: false,
         contracts: [
           { ...c, functionName: "engagement", args: [id] },
@@ -37,6 +37,7 @@ export function useLiveCovenant(id: bigint) {
           { ...c, functionName: "vested", args: [id] },
           { ...c, functionName: "retainerEarned", args: [id] },
           { ...c, functionName: "netSold", args: [id] },
+          { ...c, functionName: "netBought", args: [id] },
         ],
       });
       const indexes = [...Array(MAX_SLOTS).keys()].filter((i) => (engagement.liveMask >> BigInt(i)) & 1n);
@@ -53,7 +54,7 @@ export function useLiveCovenant(id: bigint) {
         size: s.size,
         placedBlock: s.placedBlock,
       }));
-      return { engagement, metrics, vested, retainerEarned, netSold, quotes };
+      return { engagement, metrics, vested, retainerEarned, netSold, netBought, quotes };
     },
   });
 }

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Address } from "@/components/ui/address";
 import type { MarketInfo } from "@/lib/chain";
 import { blocksToDuration, units } from "@/lib/format";
-import type { Engagement } from "@/lib/types";
+import { type Engagement, templateLabel } from "@/lib/types";
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -32,7 +32,10 @@ export function Terms({ e, market }: { e: Engagement; market: MarketInfo }) {
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       <Group title="Economics">
-        <Row label="Token loan">{b(t.loan)}</Row>
+        <Row label="Type">{templateLabel[t.template ?? 0]}</Row>
+        <Row label={t.template === 1 ? "Buyback budget" : t.template === 2 ? "Tokens to sell" : "Token loan"}>
+          {t.template === 1 ? q(t.loan) : b(t.loan)}
+        </Row>
         <Row label="Call options">
           {b(t.options)} @ {price(t.strike)}
         </Row>
@@ -54,7 +57,7 @@ export function Terms({ e, market }: { e: Engagement; market: MarketInfo }) {
       <Group title="Enforcement">
         <Row label="Clawback after">{t.ob.sustainedBreachEpochs} failed epochs</Row>
         <Row label="Quote price band">±{pct(t.risk.priceBandBps)}</Row>
-        <Row label="Net sell limit">
+        <Row label={t.template === 1 ? "Net buy limit" : "Net sell limit"}>
           {b(t.risk.maxNetSell)} / {blocksToDuration(t.risk.sellWindowBlocks)}
         </Row>
         <Row label="Min quote life">{t.ob.minQuoteLifeBlocks} blocks</Row>

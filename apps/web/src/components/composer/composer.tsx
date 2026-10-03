@@ -1,6 +1,6 @@
 "use client";
 
-import { covenantAbi, kuruErrorName, kuruTestnet, presets } from "@covenant/sdk";
+import { covenantAbi, kuruErrorName, kuruTestnet, presets, Template } from "@covenant/sdk";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -26,10 +26,12 @@ import { useMarket } from "@/lib/markets";
 import { DepthPreview } from "./depth-preview";
 import { build, type Draft, draftFromPreset, type Issues } from "./model";
 
-type PresetKey = "launch" | "exchangeGrade" | "custom";
+type PresetKey = "launch" | "exchangeGrade" | "buyback" | "distribution" | "custom";
 const presetOptions = [
   ["launch", "Token launch"],
   ["exchangeGrade", "Exchange grade"],
+  ["buyback", "Buyback"],
+  ["distribution", "Unlock sale"],
   ["custom", "Custom"],
 ] as const;
 
@@ -172,8 +174,13 @@ export function Composer() {
   };
 
   const t = built.terms;
-  const needBase = allowances.data ? allowances.data.base < t.loan : true;
-  const needQuote = t.retainer > 0n && (allowances.data ? allowances.data.quote < t.retainer : true);
+  const twoSided = draft.template === Template.TwoSided;
+  const isBuyback = draft.template === Template.Buyback;
+  const isDistribution = draft.template === Template.Distribution;
+  const baseNeeded = isBuyback ? 0n : t.loan;
+  const quoteNeeded = t.retainer + (isBuyback ? t.loan : 0n);
+  const needBase = baseNeeded > 0n && (allowances.data ? allowances.data.base < baseNeeded : true);
+  const needQuote = quoteNeeded > 0n && (allowances.data ? allowances.data.quote < quoteNeeded : true);
 
   async function send(label: string, request: Parameters<typeof writeContractAsync>[0]) {
     setStep(label);
@@ -267,27 +274,31 @@ export function Composer() {
           </Section>
           <Section title="Economics" note="what each side puts up">
             <Field
-              label="Token loan"
-              unit={base}
+              label={isBuyback ? "Buyback budget" : isDistribution ? "Tokens to sell" : "Token loan"}
+              unit={isBuyback ? quote : base}
               value={draft.loan}
               onChange={set("loan")}
               error={errors.loan}
             />
-            <Field
-              label="Call options"
-              unit={base}
-              value={draft.options}
-              onChange={set("options")}
-              error={errors.options}
-            />
-            <Field
-              label="Strike premium over mid"
-              unit="%"
-              value={draft.strikePremiumPct}
-              onChange={set("strikePremiumPct")}
-              error={errors.strikePremiumPct}
-              hint={mid ? `strike ${price(t.strike)}` : undefined}
-            />
+            {twoSided ? (
+              <>
+                <Field
+                  label="Call options"
+                  unit={base}
+                  value={draft.options}
+                  onChange={set("options")}
+                  error={errors.options}
+                />
+                <Field
+                  label="Strike premium over mid"
+                  unit="%"
+                  value={draft.strikePremiumPct}
+                  onChange={set("strikePremiumPct")}
+                  error={errors.strikePremiumPct}
+                  hint={mid ? `strike ${price(t.strike)}` : undefined}
+                />
+              </>
+            ) : null}
             <Field
               label="Retainer"
               unit={quote}
@@ -296,14 +307,16 @@ export function Composer() {
               error={errors.retainer}
               hint="streams per compliant block"
             />
-            <Field
-              label="Maker collateral"
-              unit={quote}
-              value={draft.makerCollateral}
-              onChange={set("makerCollateral")}
-              error={errors.makerCollateral}
-              hint="funds the bid side"
-            />
+            {twoSided ? (
+              <Field
+                label="Maker collateral"
+                unit={quote}
+                value={draft.makerCollateral}
+                onChange={set("makerCollateral")}
+                error={errors.makerCollateral}
+                hint="funds the bid side"
+              />
+            ) : null}
             <Field
               label="Performance bond"
               unit={quote}
@@ -327,34 +340,42 @@ export function Composer() {
             />
           </Section>
           <Section title="Obligations" note="measured on the Kuru book every block">
-            <Field
-              label="Max spread"
-              unit="bps"
-              value={draft.maxSpreadBps}
-              onChange={set("maxSpreadBps")}
-              error={errors.maxSpreadBps}
-            />
-            <Field
-              label="Max spread when volatile"
-              unit="bps"
-              value={draft.volatileSpreadBps}
-              onChange={set("volatileSpreadBps")}
-              error={errors.volatileSpreadBps}
-            />
-            <Field
-              label="Min bid depth"
-              unit={quote}
-              value={draft.minBidDepth}
-              onChange={set("minBidDepth")}
-              error={errors.minBidDepth}
-            />
-            <Field
-              label="Min ask depth"
-              unit={quote}
-              value={draft.minAskDepth}
-              onChange={set("minAskDepth")}
-              error={errors.minAskDepth}
-            />
+            {twoSided ? (
+              <>
+                <Field
+                  label="Max spread"
+                  unit="bps"
+                  value={draft.maxSpreadBps}
+                  onChange={set("maxSpreadBps")}
+                  error={errors.maxSpreadBps}
+                />
+                <Field
+                  label="Max spread when volatile"
+                  unit="bps"
+                  value={draft.volatileSpreadBps}
+                  onChange={set("volatileSpreadBps")}
+                  error={errors.volatileSpreadBps}
+                />
+              </>
+            ) : null}
+            {isDistribution ? null : (
+              <Field
+                label="Min bid depth"
+                unit={quote}
+                value={draft.minBidDepth}
+                onChange={set("minBidDepth")}
+                error={errors.minBidDepth}
+              />
+            )}
+            {isBuyback ? null : (
+              <Field
+                label="Min ask depth"
+                unit={quote}
+                value={draft.minAskDepth}
+                onChange={set("minAskDepth")}
+                error={errors.minAskDepth}
+              />
+            )}
             <Field
               label="Depth counted within"
               unit="± %"
@@ -394,7 +415,7 @@ export function Composer() {
               hint="no quote may sit further from the reference"
             />
             <Field
-              label="Net sell limit"
+              label={isBuyback ? "Net buy limit" : "Net sell limit"}
               unit={base}
               value={draft.maxNetSell}
               onChange={set("maxNetSell")}
@@ -402,7 +423,7 @@ export function Composer() {
               hint={`per ${draft.sellWindowHours || "?"} hour window`}
             />
             <Field
-              label="Sell window"
+              label="Limit window"
               unit="hours"
               value={draft.sellWindowHours}
               onChange={set("sellWindowHours")}
@@ -471,18 +492,25 @@ export function Composer() {
           <div className="grid grid-cols-2 gap-4 text-xs">
             <div className="rounded-sm border border-line p-3">
               <h3 className="label mb-2">The issuer escrows</h3>
-              <p className="num text-sm text-ink">{fmtB(t.loan)}</p>
+              <p className="num text-sm text-ink">{isBuyback ? fmtQ(t.loan) : fmtB(t.loan)}</p>
               <p className="num text-ink-2">+ {fmtQ(t.retainer)} retainer</p>
               <p className="mt-2 text-ink-3">
-                Options on {fmtB(t.options)} at {price(t.strike)}, vesting per compliant block.
+                {twoSided
+                  ? `Options on ${fmtB(t.options)} at ${price(t.strike)}, vesting per compliant block.`
+                  : "Everything bought or raised comes back to the issuer at settlement."}
               </p>
             </div>
             <div className="rounded-sm border border-line p-3">
-              <h3 className="label mb-2">The market maker posts</h3>
-              <p className="num text-sm text-ink">{fmtQ(t.makerCollateral)}</p>
-              <p className="num text-ink-2">+ {fmtQ(t.bond)} bond</p>
+              <h3 className="label mb-2">{twoSided ? "The market maker posts" : "The operator posts"}</h3>
+              {twoSided ? <p className="num text-sm text-ink">{fmtQ(t.makerCollateral)}</p> : null}
+              <p className={twoSided ? "num text-ink-2" : "num text-sm text-ink"}>
+                {twoSided ? "+ " : ""}
+                {fmtQ(t.bond)} bond
+              </p>
               <p className="mt-2 text-ink-3">
-                Gets it all back, less any shortfall, penalty or slashing, at settlement.
+                {twoSided
+                  ? "Gets it all back, less any shortfall, penalty or slashing, at settlement."
+                  : "Paid by the retainer; the bond comes back unless the covenant is clawed back."}
               </p>
             </div>
           </div>
@@ -490,21 +518,35 @@ export function Composer() {
           <div className="text-xs">
             <h3 className="label mb-2">In plain terms</h3>
             <ul className="flex flex-col gap-1.5 text-ink-2">
+              {twoSided ? (
+                <>
+                  <li>
+                    For {blocksToDuration(t.termBlocks)}, keep a two-sided book on Kuru with a spread of at
+                    most {t.ob.maxSpreadBps} bps ({t.ob.volatileSpreadBps} bps when the market moves fast).
+                  </li>
+                  <li>
+                    Rest at least {fmtQ(t.ob.minBidDepth)} of bids and {fmtQ(t.ob.minAskDepth)} of asks within
+                    ±{t.ob.depthBandBps / 100}% of the reference.
+                  </li>
+                </>
+              ) : isBuyback ? (
+                <li>
+                  For {blocksToDuration(t.termBlocks)}, keep at least {fmtQ(t.ob.minBidDepth)} of bids resting
+                  within ±{t.ob.depthBandBps / 100}% of the reference, buying with the issuer’s budget only.
+                </li>
+              ) : (
+                <li>
+                  For {blocksToDuration(t.termBlocks)}, keep at least {fmtQ(t.ob.minAskDepth)} of asks resting
+                  within ±{t.ob.depthBandBps / 100}% of the reference, selling the issuer’s tokens only.
+                </li>
+              )}
               <li>
-                For {blocksToDuration(t.termBlocks)}, keep a two-sided book on Kuru with a spread of at most{" "}
-                {t.ob.maxSpreadBps} bps ({t.ob.volatileSpreadBps} bps when the market moves fast).
-              </li>
-              <li>
-                Rest at least {fmtQ(t.ob.minBidDepth)} of bids and {fmtQ(t.ob.minAskDepth)} of asks within ±
-                {t.ob.depthBandBps / 100}% of the reference.
-              </li>
-              <li>
-                Meet both at once for {t.ob.uptimeTargetBps / 100}% of every{" "}
+                Meet {twoSided ? "both at once" : "it"} for {t.ob.uptimeTargetBps / 100}% of every{" "}
                 {blocksToDuration(t.ob.epochBlocks)} epoch. {t.ob.sustainedBreachEpochs} failed epochs in a
-                row lets anyone claw the loan back.
+                row lets anyone claw the {isBuyback ? "budget" : isDistribution ? "tokens" : "loan"} back.
               </li>
               <li>
-                Never sell more than {fmtB(t.risk.maxNetSell)} net per{" "}
+                Never {isBuyback ? "buy" : "sell"} more than {fmtB(t.risk.maxNetSell)} net per{" "}
                 {blocksToDuration(t.risk.sellWindowBlocks)}, and only through post-only quotes within ±
                 {t.risk.priceBandBps / 100}% of the reference.
               </li>
@@ -526,25 +568,37 @@ export function Composer() {
           <div className="mt-auto flex flex-col gap-2 border-t border-line pt-4">
             {address ? (
               <div className="flex flex-col gap-1.5 text-xs text-ink-3">
-                {needBase ? (
-                  <span>1. Approve {base} for the loan</span>
-                ) : (
-                  <span className="flex items-center gap-1 text-good">
-                    <CircleCheck size={12} /> {base} approved
-                  </span>
-                )}
-                {t.retainer > 0n ? (
-                  needQuote ? (
-                    <span>2. Approve {quote} for the retainer</span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-good">
-                      <CircleCheck size={12} /> {quote} approved
-                    </span>
-                  )
-                ) : null}
+                {[
+                  baseNeeded > 0n
+                    ? {
+                        token: base,
+                        pending: needBase,
+                        why: isDistribution ? "the tokens to sell" : "the loan",
+                      }
+                    : null,
+                  quoteNeeded > 0n
+                    ? {
+                        token: quote,
+                        pending: needQuote,
+                        why: isBuyback ? "the budget and retainer" : "the retainer",
+                      }
+                    : null,
+                ]
+                  .filter((step) => step !== null)
+                  .map((step, i) =>
+                    step.pending ? (
+                      <span key={step.token}>
+                        {i + 1}. Approve {step.token} for {step.why}
+                      </span>
+                    ) : (
+                      <span key={step.token} className="flex items-center gap-1 text-good">
+                        <CircleCheck size={12} /> {step.token} approved
+                      </span>
+                    ),
+                  )}
                 <span>
-                  {t.retainer > 0n ? "3" : "2"}. Propose. The market maker then accepts from the covenant
-                  page.
+                  {(baseNeeded > 0n ? 1 : 0) + (quoteNeeded > 0n ? 1 : 0) + 1}. Propose. The{" "}
+                  {twoSided ? "market maker" : "operator"} then accepts from the covenant page.
                 </span>
               </div>
             ) : null}

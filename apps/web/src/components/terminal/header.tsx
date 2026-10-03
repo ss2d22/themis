@@ -10,7 +10,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import type { MarketInfo } from "@/lib/chain";
 import { type LiveCovenant, useCovenantActions } from "@/lib/covenant";
 import { blocksToDuration } from "@/lib/format";
-import type { Engagement } from "@/lib/types";
+import { type Engagement, templateLabel } from "@/lib/types";
 import { AcceptDialog } from "./accept-dialog";
 
 const actionLabel = {
@@ -90,6 +90,9 @@ export function TerminalHeader({
           {market.baseSymbol}/{market.quoteSymbol}
         </h1>
         <span className="num text-xs text-ink-3">#{e.id}</span>
+        <span className="rounded-xs border border-line-strong px-1.5 text-2xs font-medium text-ink-2">
+          {templateLabel[e.terms.template ?? 0]}
+        </span>
       </div>
       <StatusBadge status={e.status} />
       {e.status === 2 && live ? (

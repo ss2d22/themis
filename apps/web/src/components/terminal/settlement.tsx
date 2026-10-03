@@ -30,6 +30,25 @@ export function Settlement({ e, market }: { e: Engagement; market: MarketInfo })
   const clawed = e.status === 5;
   const shortfall = BigInt(s.shortfall);
   const exercised = BigInt(s.exercised);
+  if ((e.terms.template ?? 0) !== 0) {
+    return (
+      <div className="grid grid-cols-1 gap-8 px-4 py-3 md:grid-cols-3">
+        <Column title="Returned to issuer">
+          <Line label={market.baseSymbol} value={b(s.issuerBase)} strong />
+          <Line label={market.quoteSymbol} value={q(s.issuerQuote)} strong />
+          <p className="pt-2 text-xs text-ink-3">
+            {e.terms.template === 1
+              ? "Every token bought and all unspent budget belong to the issuer."
+              : "All sale proceeds and every unsold token belong to the issuer."}
+          </p>
+        </Column>
+        <Column title="Bond">
+          <Line label="To issuer" value={q(s.bondToIssuer)} strong={BigInt(s.bondToIssuer) > 0n} />
+          <Line label="Back to operator" value={q(s.bondToMaker)} />
+        </Column>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-3 gap-8 px-4 py-3">

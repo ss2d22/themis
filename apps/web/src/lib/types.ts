@@ -11,7 +11,16 @@ export const statusLabel: Record<Status, string> = {
   6: "Cancelled",
 };
 
+export type Template = 0 | 1 | 2;
+
+export const templateLabel: Record<Template, string> = {
+  0: "Market making",
+  1: "Buyback",
+  2: "Distribution",
+};
+
 export interface Terms {
+  template: Template;
   market: string;
   maker: string;
   loan: string;

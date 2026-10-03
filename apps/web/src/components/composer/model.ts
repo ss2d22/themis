@@ -1,4 +1,4 @@
-import type { Preset } from "@covenant/sdk";
+import { type Preset, Template } from "@covenant/sdk";
 import { type Address, isAddress, keccak256, parseUnits, toBytes, zeroAddress, zeroHash } from "viem";
 import type { MarketInfo } from "@/lib/chain";
 import { BLOCK_SECONDS } from "@/lib/env";
@@ -7,6 +7,7 @@ const BLOCKS_PER_MINUTE = 60 / BLOCK_SECONDS;
 
 /** Everything the issuer types, in human units, kept as strings so inputs never fight the user. */
 export interface Draft {
+  template: Template;
   market: string;
   maker: string;
   agreement: string;
@@ -47,6 +48,7 @@ const hours = (blocks: number) => String(Math.round((blocks / BLOCKS_PER_MINUTE 
 
 export function draftFromPreset(p: Preset, market: string, maker = "", agreement = ""): Draft {
   return {
+    template: p.template,
     market,
     maker,
     agreement,
@@ -127,6 +129,7 @@ export interface Built {
       maxPriceAge: number;
     };
     termsHash: `0x${string}`;
+    template: number;
   };
   errors: Issues;
   warnings: string[];
@@ -160,11 +163,14 @@ export function build(d: Draft, market: MarketInfo | undefined, mid: bigint | un
   if (!isAddress(d.maker)) errors.maker = "Enter the market maker’s address";
   if (!isAddress(d.market)) errors.market = "Choose a Kuru market";
 
-  const loan = base(d.loan);
-  const options = base(d.options);
-  if (loan <= 0n) errors.loan = "The loan must be more than zero";
+  const twoSided = d.template === Template.TwoSided;
+  const loan = d.template === Template.Buyback ? quote(d.loan) : base(d.loan);
+  const options = twoSided ? base(d.options) : 0n;
+  if (loan <= 0n)
+    errors.loan =
+      d.template === Template.Buyback ? "The budget must be more than zero" : "Must be more than zero";
   if (options < 0n) errors.options = "Not a number";
-  else if (options > loan) errors.options = "Options cannot exceed the loan";
+  else if (twoSided && options > loan) errors.options = "Options cannot exceed the loan";
 
   const premium = num(d.strikePremiumPct);
   if (Number.isNaN(premium) || premium < -50)
@@ -210,14 +216,18 @@ export function build(d: Draft, market: MarketInfo | undefined, mid: bigint | un
   }
   if (base(d.maxNetSell) < 0n) errors.maxNetSell = "Not a number";
 
-  const minBid = quote(d.minBidDepth);
-  const minAsk = quote(d.minAskDepth);
+  const minBid = d.template === Template.Distribution ? 0n : quote(d.minBidDepth);
+  const minAsk = d.template === Template.Buyback ? 0n : quote(d.minAskDepth);
+  if (d.template === Template.Buyback && minBid <= 0n)
+    errors.minBidDepth = "A buyback needs a bid depth target";
+  if (d.template === Template.Distribution && minAsk <= 0n)
+    errors.minAskDepth = "A distribution needs an ask depth target";
   const maxNetSell = base(d.maxNetSell);
   if (priceBand < depthBand)
     warnings.push(
       "The quote price band is narrower than the depth band, so some counted depth can never be quoted.",
     );
-  if (mid && market && maxNetSell >= 0n) {
+  if (d.template !== Template.Buyback && mid && market && maxNetSell >= 0n) {
     const askBase =
       (minAsk * market.sizePrecision * market.baseSizeMultiplier * market.pricePrecision) /
       (mid * 10n ** BigInt(quoteDecimals));
@@ -226,7 +236,7 @@ export function build(d: Draft, market: MarketInfo | undefined, mid: bigint | un
         "The sell limit is below the ask depth required, so the maker cannot rest enough asks to comply.",
       );
   }
-  if (quote(d.makerCollateral) < (minBid * 12n) / 10n)
+  if (twoSided && quote(d.makerCollateral) < (minBid * 12n) / 10n)
     warnings.push("Maker collateral leaves little room above the required bid depth once fills start.");
   if (uptime > 9_900) warnings.push("Above 99% uptime leaves almost no room for a single slow observation.");
   if (quote(d.bond) < quote(d.clawbackBounty) + quote(d.watchBounty) * BigInt(Math.max(1, sustained))) {
@@ -242,7 +252,7 @@ export function build(d: Draft, market: MarketInfo | undefined, mid: bigint | un
       market: (isAddress(d.market) ? d.market : zeroAddress) as Address,
       maker: (isAddress(d.maker) ? d.maker : zeroAddress) as Address,
       loan: loan > 0n ? loan : 0n,
-      makerCollateral: quote(d.makerCollateral) > 0n ? quote(d.makerCollateral) : 0n,
+      makerCollateral: twoSided && quote(d.makerCollateral) > 0n ? quote(d.makerCollateral) : 0n,
       bond: quote(d.bond) > 0n ? quote(d.bond) : 0n,
       options: options > 0n ? options : 0n,
       retainer: quote(d.retainer) > 0n ? quote(d.retainer) : 0n,
@@ -279,6 +289,7 @@ export function build(d: Draft, market: MarketInfo | undefined, mid: bigint | un
         maxPriceAge: 0,
       },
       termsHash,
+      template: d.template,
     },
   };
 }

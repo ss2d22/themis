@@ -60,6 +60,9 @@ export function MetricStrip({
   const q = (v: bigint | string) => units(v, market.quoteDecimals, 0);
   const b = (v: bigint | string, f = 3) => units(v, market.baseDecimals, f);
   const active = e.status === 2;
+  const template = e.terms.template ?? 0;
+  const bids = template !== 2;
+  const asks = template !== 1;
 
   const spread = m ? Number(m.spreadBps) : 0;
   const allowed = m ? Number(m.allowedSpreadBps) : ob.maxSpreadBps;
@@ -69,30 +72,34 @@ export function MetricStrip({
   const options = BigInt(e.terms.options);
   const retainer = live?.retainerEarned ?? 0n;
   const bondLeft = live?.engagement.bondLeft ?? 0n;
-  const netSold = live?.netSold ?? 0n;
+  const flow = (template === 1 ? live?.netBought : live?.netSold) ?? 0n;
   const maxNetSell = BigInt(e.terms.risk.maxNetSell);
 
   return (
     <div className="grid shrink-0 grid-cols-2 gap-px border-b border-line bg-line sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 max-sm:[&>*:last-child]:col-span-2 lg:max-xl:[&>*:last-child]:col-span-2">
       <Metric
         label="Spread"
-        value={active && m && m.bestBid > 0 ? `${spread} bps` : "—"}
+        value={active && bids && asks && m && m.bestBid > 0 ? `${spread} bps` : "—"}
         numeric={spread}
-        breach={active && spread > allowed}
-        sub={`max ${allowed} bps${allowed !== ob.maxSpreadBps ? " (volatile)" : ""}`}
+        breach={active && bids && asks && spread > allowed}
+        sub={
+          bids && asks
+            ? `max ${allowed} bps${allowed !== ob.maxSpreadBps ? " (volatile)" : ""}`
+            : "one-sided covenant"
+        }
       />
       <Metric
         label="Bid depth"
-        value={active ? q(bid) : "—"}
+        value={active && bids ? q(bid) : "—"}
         numeric={Number(bid)}
-        breach={active && bid < BigInt(ob.minBidDepth)}
+        breach={active && bids && bid < BigInt(ob.minBidDepth)}
         sub={`min ${q(ob.minBidDepth)} ${market.quoteSymbol} in ±${ob.depthBandBps / 100}%`}
       />
       <Metric
         label="Ask depth"
-        value={active ? q(ask) : "—"}
+        value={active && asks ? q(ask) : "—"}
         numeric={Number(ask)}
-        breach={active && ask < BigInt(ob.minAskDepth)}
+        breach={active && asks && ask < BigInt(ob.minAskDepth)}
         sub={`min ${q(ob.minAskDepth)} ${market.quoteSymbol} in ±${ob.depthBandBps / 100}%`}
       />
       <Metric
@@ -141,11 +148,11 @@ export function MetricStrip({
         }
       />
       <Metric
-        label="Net sold"
-        value={active ? b(netSold) : "—"}
-        numeric={Number(netSold)}
+        label={template === 1 ? "Net bought" : "Net sold"}
+        value={active ? b(flow) : "—"}
+        numeric={Number(flow)}
         sub={`limit ${b(maxNetSell, 2)} ${market.baseSymbol} per window`}
-        progress={active && maxNetSell > 0n ? Number(netSold) / Number(maxNetSell) : undefined}
+        progress={active && maxNetSell > 0n ? Number(flow) / Number(maxNetSell) : undefined}
       />
     </div>
   );

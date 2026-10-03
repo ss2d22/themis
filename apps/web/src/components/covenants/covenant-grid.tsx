@@ -14,7 +14,7 @@ import { useHead } from "@/lib/chain";
 import { blocksToDuration, bps, compact, percentFromBps, toNumber } from "@/lib/format";
 import { pairName, useMarkets } from "@/lib/markets";
 import { blocksLeft, spreadBps, vestedFraction } from "@/lib/metrics";
-import type { Engagement } from "@/lib/types";
+import { type Engagement, templateLabel } from "@/lib/types";
 import { TargetMeter } from "./meter";
 
 const views = ["all", "active", "breach", "closed"] as const;
@@ -53,8 +53,15 @@ const columns: Column<Row>[] = [
     cell: (c) => <span className="font-medium text-ink">{c.getValue<string>()}</span>,
   },
   {
+    id: "type",
+    header: "Type",
+    accessorFn: (e) => e.terms.template ?? 0,
+    size: 110,
+    cell: (c) => <span className="text-ink-2">{templateLabel[c.row.original.terms.template ?? 0]}</span>,
+  },
+  {
     id: "maker",
-    header: "Market maker",
+    header: "Operator",
     accessorFn: (e) => e.maker,
     size: 130,
     cell: (c) => <Address address={c.getValue<string>()} />,
