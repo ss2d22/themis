@@ -27,6 +27,7 @@ interface Props {
   fills: Fill[];
   changes: ComplianceChange[];
   strike: number;
+  sides?: "both" | "bids" | "asks";
 }
 
 interface Readout {
@@ -37,7 +38,7 @@ interface Readout {
   fill?: number;
 }
 
-export function PriceChart({ market, observations, fills, changes, strike }: Props) {
+export function PriceChart({ market, observations, fills, changes, strike, sides = "both" }: Props) {
   const colors = useChartColors();
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
@@ -169,6 +170,8 @@ export function PriceChart({ market, observations, fills, changes, strike }: Pro
         .sort((a, b) => a.time - b.time),
     );
     if (s.strike) s.ref.removePriceLine(s.strike);
+    s.strike = null;
+    if (sides !== "both") return;
     s.strike = s.ref.createPriceLine({
       price: strike,
       color: colors.muted,
@@ -177,7 +180,7 @@ export function PriceChart({ market, observations, fills, changes, strike }: Pro
       axisLabelVisible: true,
       title: "Strike",
     });
-  }, [data, changes, strike, colors]);
+  }, [data, changes, strike, colors, sides]);
 
   const latest = {
     ref: data.ref.at(-1)?.value,
@@ -195,18 +198,26 @@ export function PriceChart({ market, observations, fills, changes, strike }: Pro
           time={hover?.time ? clock(hover.time) : undefined}
           items={[
             { key: "ref", label: "Reference", value: fmt(shown.ref), color: colors.ink2 },
-            { key: "bid", label: "Covenant bid", value: fmt(shown.bid), color: colors.bid },
-            { key: "ask", label: "Covenant ask", value: fmt(shown.ask), color: colors.ask },
+            ...(sides !== "asks"
+              ? [{ key: "bid", label: "Covenant bid", value: fmt(shown.bid), color: colors.bid }]
+              : []),
+            ...(sides !== "bids"
+              ? [{ key: "ask", label: "Covenant ask", value: fmt(shown.ask), color: colors.ask }]
+              : []),
             ...(hover?.fill !== undefined
               ? [{ key: "fill", label: "Fill", value: fmt(hover.fill), color: colors.ink }]
               : []),
-            {
-              key: "strike",
-              label: "Strike",
-              value: strike.toFixed(decimals),
-              color: colors.muted,
-              dashed: true,
-            },
+            ...(sides === "both"
+              ? [
+                  {
+                    key: "strike",
+                    label: "Strike",
+                    value: strike.toFixed(decimals),
+                    color: colors.muted,
+                    dashed: true,
+                  },
+                ]
+              : []),
           ]}
         />
       ) : null}

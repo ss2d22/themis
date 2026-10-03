@@ -99,7 +99,7 @@ export function TerminalHeader({
         <ComplianceBadge compliant={live.metrics.compliant} suspended={live.metrics.suspended} />
       ) : null}
       <div className="flex items-center gap-1.5 text-xs text-ink-3">
-        maker <Address address={e.maker} />
+        {(e.terms.template ?? 0) === 0 ? "maker" : "operator"} <Address address={e.maker} />
       </div>
       {e.status === 2 ? (
         <div className="flex items-center gap-2 text-xs text-ink-3">

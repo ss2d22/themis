@@ -93,14 +93,18 @@ export function MetricStrip({
         value={active && bids ? q(bid) : "—"}
         numeric={Number(bid)}
         breach={active && bids && bid < BigInt(ob.minBidDepth)}
-        sub={`min ${q(ob.minBidDepth)} ${market.quoteSymbol} in ±${ob.depthBandBps / 100}%`}
+        sub={
+          bids ? `min ${q(ob.minBidDepth)} ${market.quoteSymbol} in ±${ob.depthBandBps / 100}%` : "asks only"
+        }
       />
       <Metric
         label="Ask depth"
         value={active && asks ? q(ask) : "—"}
         numeric={Number(ask)}
         breach={active && asks && ask < BigInt(ob.minAskDepth)}
-        sub={`min ${q(ob.minAskDepth)} ${market.quoteSymbol} in ±${ob.depthBandBps / 100}%`}
+        sub={
+          asks ? `min ${q(ob.minAskDepth)} ${market.quoteSymbol} in ±${ob.depthBandBps / 100}%` : "bids only"
+        }
       />
       <Metric
         label="Uptime to date"
@@ -118,10 +122,14 @@ export function MetricStrip({
       />
       <Metric
         label="Options vested"
-        value={b(vested)}
+        value={bids && asks ? b(vested) : "—"}
         numeric={Number(vested)}
-        sub={`of ${b(options)} ${market.baseSymbol} @ ${(e.terms.strike / Number(market.pricePrecision)).toLocaleString("en-US")}`}
-        progress={options > 0n ? Number(vested) / Number(options) : 0}
+        sub={
+          bids && asks
+            ? `of ${b(options)} ${market.baseSymbol} @ ${(e.terms.strike / Number(market.pricePrecision)).toLocaleString("en-US")}`
+            : "paid by retainer instead"
+        }
+        progress={bids && asks && options > 0n ? Number(vested) / Number(options) : undefined}
       />
       <Metric
         label="Retainer earned"

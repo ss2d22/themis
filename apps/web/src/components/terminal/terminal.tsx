@@ -70,6 +70,7 @@ export function Terminal({ id }: { id: string }) {
                   fills={r.fills}
                   changes={r.changes}
                   strike={e.terms.strike / Number(market.pricePrecision)}
+                  sides={e.terms.template === 1 ? "bids" : e.terms.template === 2 ? "asks" : "both"}
                 />
               ) : (
                 <Empty title="No observations yet">

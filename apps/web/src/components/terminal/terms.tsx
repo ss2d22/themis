@@ -29,6 +29,7 @@ export function Terms({ e, market }: { e: Engagement; market: MarketInfo }) {
   const b = (v: string) => `${units(v, market.baseDecimals, 2)} ${market.baseSymbol}`;
   const price = (v: number) => (v / Number(market.pricePrecision)).toLocaleString("en-US");
   const pct = (bps: number) => `${bps / 100}%`;
+  const twoSided = (t.template ?? 0) === 0;
   return (
     <div className="min-h-0 flex-1 overflow-auto">
       <Group title="Economics">
@@ -36,19 +37,25 @@ export function Terms({ e, market }: { e: Engagement; market: MarketInfo }) {
         <Row label={t.template === 1 ? "Buyback budget" : t.template === 2 ? "Tokens to sell" : "Token loan"}>
           {t.template === 1 ? q(t.loan) : b(t.loan)}
         </Row>
-        <Row label="Call options">
-          {b(t.options)} @ {price(t.strike)}
-        </Row>
+        {twoSided ? (
+          <Row label="Call options">
+            {b(t.options)} @ {price(t.strike)}
+          </Row>
+        ) : null}
         <Row label="Retainer">{q(t.retainer)}</Row>
-        <Row label="Maker collateral">{q(t.makerCollateral)}</Row>
+        {twoSided ? <Row label="Maker collateral">{q(t.makerCollateral)}</Row> : null}
         <Row label="Performance bond">{q(t.bond)}</Row>
         <Row label="Term">{blocksToDuration(t.termBlocks)}</Row>
       </Group>
       <Group title="Obligations">
-        <Row label="Max spread">{t.ob.maxSpreadBps} bps</Row>
-        <Row label="Volatile max spread">{t.ob.volatileSpreadBps} bps</Row>
-        <Row label="Min bid depth">{q(t.ob.minBidDepth)}</Row>
-        <Row label="Min ask depth">{q(t.ob.minAskDepth)}</Row>
+        {twoSided ? (
+          <>
+            <Row label="Max spread">{t.ob.maxSpreadBps} bps</Row>
+            <Row label="Volatile max spread">{t.ob.volatileSpreadBps} bps</Row>
+          </>
+        ) : null}
+        {t.template !== 2 ? <Row label="Min bid depth">{q(t.ob.minBidDepth)}</Row> : null}
+        {t.template !== 1 ? <Row label="Min ask depth">{q(t.ob.minAskDepth)}</Row> : null}
         <Row label="Depth band">±{pct(t.ob.depthBandBps)}</Row>
         <Row label="Uptime per epoch">≥ {pct(t.ob.uptimeTargetBps)}</Row>
         <Row label="Epoch">{blocksToDuration(t.ob.epochBlocks)}</Row>
