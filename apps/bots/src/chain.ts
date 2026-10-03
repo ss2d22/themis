@@ -35,9 +35,11 @@ export function walletFor(rpcUrl: string, key: Hex) {
 
 export type Wallet = ReturnType<typeof walletFor>;
 
+const GAS_MARGIN_PERCENT = 125n;
+
 export type SendResult =
   | { ok: true; hash: Hex; receipt: TransactionReceipt }
-  | { ok: false; reason: string; args?: readonly unknown[] };
+  | { ok: false; reason: string; args?: readonly unknown[]; hash?: Hex };
 
 /**
  * Simulates a call and only sends it if it would succeed. Monad charges the full gas limit even for
@@ -54,9 +56,15 @@ export async function send<
 ): Promise<SendResult> {
   try {
     const { request } = await client.simulateContract({ ...call, account: wallet.account } as never);
-    const hash = await wallet.writeContract(request as never);
+    // The estimate is taken against the pre-block state; other transactions in the same block can warm or move
+    // state and push the real cost past it. Monad charges the full limit, so the margin is kept modest.
+    const estimate = await client.estimateContractGas({ ...call, account: wallet.account } as never);
+    const gas = (estimate * GAS_MARGIN_PERCENT) / 100n;
+    const hash = await wallet.writeContract({ ...(request as object), gas } as never);
     const receipt = await client.waitForTransactionReceipt({ hash });
-    if (receipt.status !== "success") return { ok: false, reason: "reverted on chain" };
+    if (receipt.status !== "success") {
+      return { ok: false, reason: `reverted on chain using ${receipt.gasUsed} of ${gas} gas`, hash };
+    }
     return { ok: true, hash, receipt };
   } catch (error) {
     return { ok: false, ...describeRevert(error) };
