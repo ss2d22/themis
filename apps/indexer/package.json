@@ -1,0 +1,19 @@
+{
+  "name": "@covenant/indexer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "ponder dev",
+    "start": "ponder start",
+    "serve": "ponder serve",
+    "codegen": "ponder codegen",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@covenant/sdk": "workspace:*",
+    "hono": "^4.13.12",
+    "ponder": "0.17.12",
+    "viem": "^2.57.2"
+  }
+}

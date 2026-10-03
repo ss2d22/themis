@@ -35,3 +35,7 @@ contracts/deployments/31337.json
 
 # bot output
 logs/
+
+# ponder
+.ponder/
+generated/
