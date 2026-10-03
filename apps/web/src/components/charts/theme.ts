@@ -49,6 +49,14 @@ export function useChartColors(): ChartColors | null {
   return colors;
 }
 
+/** `#rrggbb` at the given opacity, as `#rrggbbaa`. Canvas colours cannot use color-mix(). */
+export function withAlpha(hex: string, opacity: number): string {
+  if (!/^#[0-9a-f]{6}$/i.test(hex)) return hex;
+  return `${hex}${Math.round(opacity * 255)
+    .toString(16)
+    .padStart(2, "0")}`;
+}
+
 export function chartOptions(c: ChartColors): DeepPartial<ChartOptions> {
   return {
     autoSize: true,

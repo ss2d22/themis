@@ -23,3 +23,20 @@ export const useWatchers = () =>
   useQuery({ queryKey: ["watchers"], queryFn: () => get<WatcherRow[]>("/watchers"), ...live });
 export const useOutcomes = () =>
   useQuery({ queryKey: ["outcomes"], queryFn: () => get<OutcomeMarket[]>("/outcomes"), ...live });
+
+export interface Timeseries {
+  bucket: number;
+  fills: { time: number; value: number }[];
+  quotes: { time: number; value: number }[];
+  observations: { time: number; value: number }[];
+  credited: { time: number; value: number }[];
+  breaches: { time: number; value: number }[];
+}
+
+export const useTimeseries = (bucket: number) =>
+  useQuery({
+    queryKey: ["timeseries", bucket],
+    queryFn: () => get<Timeseries>(`/timeseries?bucket=${bucket}`),
+    refetchInterval: 10_000,
+    placeholderData: keepPreviousData,
+  });
