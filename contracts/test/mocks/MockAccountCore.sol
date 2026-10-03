@@ -16,12 +16,19 @@ contract MockAccountCore {
     mapping(uint40 => bool) public postFillHookAccess;
     mapping(address => bool) public verifiedSpotOrderBook;
 
+    bool public withdrawalsFrozen;
+
     error Unauthorized();
     error Insufficient();
+    error Frozen();
 
     modifier onlyBook() {
         if (!verifiedSpotOrderBook[msg.sender]) revert Unauthorized();
         _;
+    }
+
+    function setWithdrawalsFrozen(bool frozen) external {
+        withdrawalsFrozen = frozen;
     }
 
     function registerBook(address book) external {
@@ -60,6 +67,7 @@ contract MockAccountCore {
 
     function withdraw(uint40 root, address token, uint256 amount, address recipient) external {
         if (rootOf[root] != root || !isOwner(root, msg.sender)) revert Unauthorized();
+        if (withdrawalsFrozen) revert Frozen();
         _debit(root, token, amount);
         token.safeTransfer(recipient, amount);
     }

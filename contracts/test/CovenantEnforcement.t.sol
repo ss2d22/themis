@@ -213,6 +213,37 @@ contract CovenantEnforcementTest is CovenantBase {
         assertEq(usdc.balanceOf(maker), 1_000_000e6 - 210_000e6 + 3000e6);
     }
 
+    function test_claimPaysLocalWhenKuruWithdrawalIsBlocked() public {
+        quoteHonestly(start + 100_000);
+        vm.prank(maker);
+        covenant.settle(id, 0);
+
+        core.setWithdrawalsFrozen(true);
+        uint256 before = usdc.balanceOf(maker);
+        vm.prank(maker);
+        covenant.claim(address(usdc));
+        assertEq(usdc.balanceOf(maker) - before, 10_000e6 + 30_000e6);
+        assertEq(covenant.kuruOwed(maker, address(usdc)), 200_000e6);
+
+        core.setWithdrawalsFrozen(false);
+        vm.prank(maker);
+        covenant.claimKuru(address(usdc), 50_000e6);
+        assertEq(covenant.kuruOwed(maker, address(usdc)), 150_000e6);
+        vm.prank(maker);
+        covenant.claim(address(usdc));
+        assertEq(covenant.kuruOwed(maker, address(usdc)), 0);
+    }
+
+    function test_claimRevertsWhenOnlyBlockedFundsAreOwed() public {
+        quoteHonestly(start + 100_000);
+        vm.prank(maker);
+        covenant.settle(id, 0);
+        core.setWithdrawalsFrozen(true);
+        vm.prank(issuer);
+        vm.expectRevert(Covenant.KuruWithdrawalBlocked.selector);
+        covenant.claim(address(base));
+    }
+
     function _settledResult() internal view returns (Settlement.Output memory) {
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i = logs.length; i > 0; --i) {

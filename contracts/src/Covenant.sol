@@ -200,6 +200,7 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
     event BackstopReleased(uint256 indexed id, uint256 base, uint256 quote);
     event RetainerClaimed(uint256 indexed id, uint256 amount);
     event Claimed(address indexed account, address indexed token, uint256 amount);
+    event KuruWithdrawalDeferred(address indexed account, address indexed token, uint256 amount);
 
     error InvalidTerms();
     error InvalidStatus();
@@ -216,6 +217,7 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
     error EpochNotOver();
     error BackstopLocked();
     error NothingToClaim();
+    error KuruWithdrawalBlocked();
 
     constructor(IKuruAccountCore accountCore_) {
         accountCore = accountCore_;
@@ -527,16 +529,39 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
         emit RetainerClaimed(id, amount);
     }
 
-    /// @notice Pays out everything owed to the caller in `token`, from this contract and from Kuru.
+    /// @notice Pays out everything owed to the caller in `token`. Kuru's withdrawal limiter can hold back the part
+    ///         held on Kuru; that part stays owed and can be claimed later, in full or in pieces, with `claimKuru`.
     function claim(address token) external nonReentrant {
         uint256 local = owed[msg.sender][token];
         uint256 onKuru = kuruOwed[msg.sender][token];
         if (local + onKuru == 0) revert NothingToClaim();
-        owed[msg.sender][token] = 0;
-        kuruOwed[msg.sender][token] = 0;
-        if (local > 0) token.safeTransfer(msg.sender, local);
-        if (onKuru > 0) accountCore.withdraw(rootAccount, token, onKuru, msg.sender);
-        emit Claimed(msg.sender, token, local + onKuru);
+
+        uint256 paid;
+        if (local > 0) {
+            owed[msg.sender][token] = 0;
+            token.safeTransfer(msg.sender, local);
+            paid = local;
+        }
+        if (onKuru > 0) {
+            kuruOwed[msg.sender][token] = 0;
+            try accountCore.withdraw(rootAccount, token, onKuru, msg.sender) {
+                paid += onKuru;
+            } catch {
+                kuruOwed[msg.sender][token] = onKuru;
+                emit KuruWithdrawalDeferred(msg.sender, token, onKuru);
+            }
+        }
+        if (paid == 0) revert KuruWithdrawalBlocked();
+        emit Claimed(msg.sender, token, paid);
+    }
+
+    /// @notice Withdraws part of what is owed on Kuru, for when the limiter's capacity is below the full amount.
+    function claimKuru(address token, uint256 amount) external nonReentrant {
+        uint256 onKuru = kuruOwed[msg.sender][token];
+        if (amount == 0 || amount > onKuru) revert NothingToClaim();
+        kuruOwed[msg.sender][token] = onKuru - amount;
+        accountCore.withdraw(rootAccount, token, amount, msg.sender);
+        emit Claimed(msg.sender, token, amount);
     }
 
     // -------------------------------------------------------------------------
