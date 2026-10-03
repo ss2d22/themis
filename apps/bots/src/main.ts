@@ -6,7 +6,7 @@ import { runTaker } from "./bots/taker.js";
 import { runWatchtower } from "./bots/watchtower.js";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./log.js";
-import { fundFork, setupEngagement, setupOutcome, setupTaker } from "./setup/index.js";
+import { fundFork, grantHookOnFork, setupEngagement, setupOutcome, setupTaker } from "./setup/index.js";
 
 const usage = `usage: pnpm start <command> [options]
 
@@ -19,6 +19,7 @@ const usage = `usage: pnpm start <command> [options]
   setup taker [--base 1] [--quote 3000]
   setup outcome --engagement <id> --first <epoch> --count <n>
   setup fund-fork             local anvil fork only
+  setup hook --engagement <id>  local anvil fork only: enable the post-fill hook
 
   --engagement <id>           overrides ENGAGEMENT_ID
   --size <base>               market maker size per level`;
@@ -78,6 +79,8 @@ async function main() {
           );
         case "fund-fork":
           return fundFork(config, log);
+        case "hook":
+          return grantHookOnFork(config, log, BigInt(values.engagement ?? 0));
       }
   }
   console.error(usage);

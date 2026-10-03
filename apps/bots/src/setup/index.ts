@@ -266,6 +266,41 @@ export async function fundFork(config: Config, log: Logger) {
   await anvil.stopImpersonatingAccount({ address: KURU_GOVERNANCE });
 }
 
+/** Local anvil fork only: grants post-fill hook access as Kuru governance and registers the escrow as the hook. */
+export async function grantHookOnFork(config: Config, log: Logger, id: bigint) {
+  const chain = chainFor(config.RPC_URL);
+  const transport = http(config.RPC_URL);
+  const anvil = createTestClient({ mode: "anvil", chain, transport });
+  const client = publicClientFor(config.RPC_URL);
+  const covenant = required(config, "COVENANT_ADDRESS");
+  const governance = createWalletClient({ account: KURU_GOVERNANCE, chain, transport });
+  const e = await client.readContract({
+    address: covenant,
+    abi: covenantAbi,
+    functionName: "engagement",
+    args: [id],
+  });
+
+  await anvil.impersonateAccount({ address: KURU_GOVERNANCE });
+  const hash = await governance.writeContract({
+    address: kuruTestnet.accountCore,
+    abi: kuruAccountCoreAbi,
+    functionName: "setPostFillHookAccess",
+    args: [e.account, true],
+  });
+  await client.waitForTransactionReceipt({ hash });
+  await anvil.stopImpersonatingAccount({ address: KURU_GOVERNANCE });
+
+  const watcher = walletFor(config.RPC_URL, required(config, "WATCHER_KEY"));
+  const r = await send(client, watcher, {
+    address: covenant,
+    abi: covenantAbi,
+    functionName: "enableHook",
+    args: [id],
+  });
+  log.info({ id: id.toString(), account: e.account, ok: r.ok }, "post-fill hook enabled");
+}
+
 const KURU_GOVERNANCE: Address = "0xc64346f7dDc776B34EAa44C0B61D564797038143";
 
 const mintableAbi = [
