@@ -46,4 +46,10 @@ describe("kuruErrorName", () => {
     expect(kuruErrorName("0xdeadbeef")).toBeUndefined();
     expect(kuruErrorName(undefined)).toBeUndefined();
   });
+
+  it("finds escrow errors in raw failure messages", async () => {
+    const { errorNameIn } = await import("../src/errors");
+    expect(errorNameIn('reverted with the following signature:\n0xbbf16ae5')).toBe("QuoteTooYoung");
+    expect(errorNameIn("no selector here")).toBeUndefined();
+  });
 });
