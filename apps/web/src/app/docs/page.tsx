@@ -11,6 +11,7 @@ const sections = [
   ["measure", "What gets measured"],
   ["cannot", "What the market maker cannot do"],
   ["enforce", "Enforcement and settlement"],
+  ["structures", "Three market structures"],
   ["outcomes", "Outcome markets"],
   ["why", "Why Kuru on Monad"],
   ["roles", "Who uses it"],
@@ -33,6 +34,24 @@ function Figure({ children, caption }: { children: ReactNode; caption: string })
     </figure>
   );
 }
+
+const structures: [string, string, string][] = [
+  [
+    "Market making",
+    "Keep a two-sided book within a max spread, with bid and ask depth in band",
+    "Loan back in tokens; any shortfall paid at strike, then at a penalty price",
+  ],
+  [
+    "Buyback",
+    "Rest bids from the issuer’s quote budget, at a capped buy pace",
+    "Every token bought and all unspent budget go to the issuer",
+  ],
+  [
+    "Distribution",
+    "Sell the issuer’s tokens through asks only, at a capped sell pace",
+    "All proceeds and unsold tokens go to the issuer",
+  ],
+];
 
 const rules: [string, string][] = [
   [
@@ -178,6 +197,37 @@ export default function DocsPage() {
               owed the loan back in tokens. Anything the market maker sold and did not buy back is paid for at
               the strike, using vested options, and above that at the higher of strike and reference plus a
               penalty. If the market maker’s quote runs short, the bond makes up the difference.
+            </p>
+          </Section>
+
+          <Section id="structures" title="Three market structures">
+            <p>
+              The same escrow enforces more than market-making mandates. Each covenant carries a template that
+              decides which side the operator may quote, what compliance means and how the account settles.
+            </p>
+            <div className="overflow-hidden rounded-sm border border-line">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-panel text-ink-3">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Template</th>
+                    <th className="px-3 py-2 font-medium">The operator must</th>
+                    <th className="px-3 py-2 font-medium">At the end</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {structures.map(([name, must, end]) => (
+                    <tr key={name} className="border-t border-line align-top">
+                      <td className="px-3 py-2 text-ink">{name}</td>
+                      <td className="px-3 py-2 text-ink-2">{must}</td>
+                      <td className="px-3 py-2 text-ink-2">{end}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p>
+              A verifiable buyback replaces a treasury’s discretionary, unannounced buying with bids anyone
+              can watch rest. A distribution turns a token unlock into a paced sale instead of a single dump.
             </p>
           </Section>
 
