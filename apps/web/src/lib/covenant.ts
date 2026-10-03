@@ -67,7 +67,8 @@ type Action =
   | "terminate"
   | "releaseBackstop"
   | "claimRetainer"
-  | "settle";
+  | "settle"
+  | "cancel";
 
 function revertReason(error: unknown): string {
   if (error instanceof BaseError) {

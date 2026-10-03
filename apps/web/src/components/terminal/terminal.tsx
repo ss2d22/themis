@@ -97,7 +97,7 @@ export function Terminal({ id }: { id: string }) {
             <OrderBook
               market={market}
               quotes={live.data?.quotes ?? []}
-              refPrice={BigInt(live.data?.engagement.refPrice ?? e.refPrice ?? 0)}
+              refPrice={BigInt(live.data?.engagement.refPrice || e.refPrice || e.terms.initialPrice)}
               bandBps={e.terms.ob.depthBandBps}
             />
           </div>

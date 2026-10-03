@@ -11,6 +11,7 @@ import type { MarketInfo } from "@/lib/chain";
 import { type LiveCovenant, useCovenantActions } from "@/lib/covenant";
 import { blocksToDuration } from "@/lib/format";
 import type { Engagement } from "@/lib/types";
+import { AcceptDialog } from "./accept-dialog";
 
 const actionLabel = {
   poke: "Record book",
@@ -20,6 +21,7 @@ const actionLabel = {
   releaseBackstop: "Release backstop",
   claimRetainer: "Claim retainer",
   settle: "Settle",
+  cancel: "Withdraw proposal",
 } as const;
 
 export function TerminalHeader({
@@ -120,6 +122,10 @@ export function TerminalHeader({
             {actions.result.ok ? "confirmed" : `failed: ${actions.result.message}`}
             {actions.result.hash ? <TxLink hash={actions.result.hash} /> : null}
           </span>
+        ) : null}
+        {e.status === 1 && isMaker ? <AcceptDialog e={e} market={market} /> : null}
+        {e.status === 1 && !isMaker ? (
+          <span className="text-xs text-ink-3">Waiting for the market maker to accept</span>
         ) : null}
         {available.map(({ action, hint, tone }) => (
           <Tooltip

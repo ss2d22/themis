@@ -125,7 +125,13 @@ export function MetricStrip({
         label={`Bond left ${market.quoteSymbol}`}
         value={active || e.status === 3 ? units(bondLeft, market.quoteDecimals) : "—"}
         numeric={Number(bondLeft)}
-        sub={active || e.status === 3 ? `of ${q(e.terms.bond)} posted` : "distributed at close"}
+        sub={
+          active || e.status === 3
+            ? `of ${q(e.terms.bond)} posted`
+            : e.status === 1
+              ? `${q(e.terms.bond)} due on accept`
+              : "distributed at close"
+        }
         progress={
           (active || e.status === 3) && BigInt(e.terms.bond) > 0n
             ? Number(bondLeft) / Number(e.terms.bond)
