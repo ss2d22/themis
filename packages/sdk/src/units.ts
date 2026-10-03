@@ -1,5 +1,5 @@
 import type { Address, PublicClient } from "viem";
-import { kuruOrderBookAbi } from "./abi/index.js";
+import { kuruOrderBookAbi } from "./abi/index";
 
 export interface MarketUnits {
   market: Address;

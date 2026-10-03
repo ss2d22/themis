@@ -1,5 +1,5 @@
-export { covenantAbi } from "./covenantAbi.js";
-export { outcomeMarketAbi } from "./outcomeMarketAbi.js";
-export { outcomeTokenAbi } from "./outcomeTokenAbi.js";
-export { kuruOrderBookAbi } from "./kuruOrderBookAbi.js";
-export { kuruAccountCoreAbi } from "./kuruAccountCoreAbi.js";
+export { covenantAbi } from "./covenantAbi";
+export { outcomeMarketAbi } from "./outcomeMarketAbi";
+export { outcomeTokenAbi } from "./outcomeTokenAbi";
+export { kuruOrderBookAbi } from "./kuruOrderBookAbi";
+export { kuruAccountCoreAbi } from "./kuruAccountCoreAbi";

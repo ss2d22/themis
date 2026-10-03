@@ -1,6 +1,6 @@
 export { monadTestnet } from "viem/chains";
-export * from "./abi/index.js";
-export * from "./codec.js";
-export * from "./kuru.js";
-export * from "./trades.js";
-export * from "./units.js";
+export * from "./abi/index";
+export * from "./codec";
+export * from "./kuru";
+export * from "./trades";
+export * from "./units";

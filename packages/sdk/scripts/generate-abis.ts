@@ -17,7 +17,7 @@ for (const [file, name, exportName] of contracts) {
   const artifact = JSON.parse(readFileSync(join(out, file, `${name}.json`), "utf8"));
   const body = `export const ${exportName} = ${JSON.stringify(artifact.abi, null, 2)} as const;\n`;
   writeFileSync(join(target, `${exportName}.ts`), body);
-  index.push(`export { ${exportName} } from "./${exportName}.js";`);
+  index.push(`export { ${exportName} } from "./${exportName}";`);
 }
 writeFileSync(join(target, "index.ts"), `${index.join("\n")}\n`);
 console.log(`wrote ${contracts.length} ABIs`);
