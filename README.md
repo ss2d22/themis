@@ -140,10 +140,25 @@ forge script script/Deploy.s.sol --rpc-url monad_testnet --broadcast --private-k
 
 Addresses are written to `contracts/deployments/<chainId>.json`.
 
+### Deploying the services
+
+| Service | Runs | Needs |
+| - | - | - |
+| Web | `apps/web`, any Next.js host | `NEXT_PUBLIC_*` variables from `apps/web/.env.example` |
+| Indexer | `pnpm --filter @covenant/indexer start` | `apps/indexer/.env.example`, plus `DATABASE_URL` for Postgres |
+| Bots | `pnpm --filter @covenant/bots start <role>`, one process per role | `apps/bots/.env.example`, one funded key per role |
+
+The indexer serves the API the web app reads; point `NEXT_PUBLIC_INDEXER_URL`
+at it. Each market maker needs its own quoting key, since a key's nonce is
+managed by one process.
+
 ## Testing and security
 
 - 81 unit, fuzz and invariant tests against a ledger-level Kuru mock, and 9
   tests against the live Kuru testnet deployment on a fork.
+- Browser tests drive the real app against a rehearsal fork with an injected
+  wallet: proposing and accepting a covenant, and minting an outcome set
+  (`pnpm --filter @covenant/web e2e` with a rehearsal running).
 - Fuzzed settlement: base, quote and bond are conserved, and the issuer is
   never paid below the strike.
 - Stateful invariants under random quoting, partial and full fills, hook
