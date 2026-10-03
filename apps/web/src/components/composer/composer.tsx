@@ -12,7 +12,7 @@ import { cn } from "@/components/ui/cn";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { Segmented } from "@/components/ui/segmented";
 import { Loading } from "@/components/ui/states";
-import { publicClient, useBook } from "@/lib/chain";
+import { publicClient, useBook, withGasMargin } from "@/lib/chain";
 import { env } from "@/lib/env";
 import { describeError } from "@/lib/errors";
 import { blocksToDuration, units } from "@/lib/format";
@@ -168,7 +168,7 @@ export function Composer() {
 
   async function send(label: string, request: Parameters<typeof writeContractAsync>[0]) {
     setStep(label);
-    const hash = await writeContractAsync(request);
+    const hash = await writeContractAsync(await withGasMargin(request));
     return publicClient.waitForTransactionReceipt({ hash });
   }
 

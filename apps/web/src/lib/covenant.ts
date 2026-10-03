@@ -4,7 +4,7 @@ import { covenantAbi, MAX_SLOTS } from "@covenant/sdk";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAccount, useWriteContract } from "wagmi";
-import { publicClient } from "./chain";
+import { publicClient, withGasMargin } from "./chain";
 import { env } from "./env";
 import { describeError } from "./errors";
 
@@ -95,7 +95,9 @@ export function useCovenantActions(id: bigint) {
         args,
         account: address,
       } as Parameters<typeof publicClient.simulateContract>[0]);
-      const hash = await writeContractAsync(request as Parameters<typeof writeContractAsync>[0]);
+      const hash = await writeContractAsync(
+        await withGasMargin(request as Parameters<typeof writeContractAsync>[0]),
+      );
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       setState({
         pending: null,

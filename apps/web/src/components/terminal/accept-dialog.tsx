@@ -9,7 +9,7 @@ import { type Address, erc20Abi, isAddress, maxUint256 } from "viem";
 import { useAccount, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
 import type { MarketInfo } from "@/lib/chain";
-import { publicClient } from "@/lib/chain";
+import { publicClient, withGasMargin } from "@/lib/chain";
 import { env } from "@/lib/env";
 import { describeError } from "@/lib/errors";
 import { units } from "@/lib/format";
@@ -54,7 +54,9 @@ export function AcceptDialog({ e, market }: { e: Engagement; market: MarketInfo 
           args: [env.covenant, maxUint256],
           account: address,
         });
-        await publicClient.waitForTransactionReceipt({ hash: await writeContractAsync(request) });
+        await publicClient.waitForTransactionReceipt({
+          hash: await writeContractAsync(await withGasMargin(request)),
+        });
       }
       setStep("Accepting");
       const { request } = await publicClient.simulateContract({
@@ -64,7 +66,9 @@ export function AcceptDialog({ e, market }: { e: Engagement; market: MarketInfo 
         args: [BigInt(e.id), key],
         account: address,
       });
-      await publicClient.waitForTransactionReceipt({ hash: await writeContractAsync(request) });
+      await publicClient.waitForTransactionReceipt({
+        hash: await writeContractAsync(await withGasMargin(request)),
+      });
       await queryClient.invalidateQueries();
       setOpen(false);
     } catch (error) {

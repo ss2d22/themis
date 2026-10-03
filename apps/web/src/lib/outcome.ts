@@ -5,7 +5,7 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useState } from "react";
 import { type Address, erc20Abi, maxUint256 } from "viem";
 import { useAccount, useWriteContract } from "wagmi";
-import { publicClient } from "./chain";
+import { publicClient, withGasMargin } from "./chain";
 import { env } from "./env";
 import { describeError } from "./errors";
 import type { OutcomeMarket } from "./types";
@@ -146,7 +146,9 @@ export function useOutcomeActions(marketId: string | undefined, collateral: Addr
                 account: address,
               })
             ).request;
-      const hash = await writeContractAsync(request as Parameters<typeof writeContractAsync>[0]);
+      const hash = await writeContractAsync(
+        await withGasMargin(request as Parameters<typeof writeContractAsync>[0]),
+      );
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       setMessage({
         ok: receipt.status === "success",

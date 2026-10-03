@@ -61,3 +61,14 @@ export function useBook(market: Address | undefined, levels = 16) {
     },
   });
 }
+
+/**
+ * Adds a margin to a simulated request's gas. Estimates are taken against the pre-block state, and Monad charges
+ * the full limit, so the margin is modest rather than generous.
+ */
+export async function withGasMargin<T extends object>(request: T): Promise<T & { gas: bigint }> {
+  const estimate = await publicClient.estimateContractGas(
+    request as Parameters<typeof publicClient.estimateContractGas>[0],
+  );
+  return { ...request, gas: (estimate * 125n) / 100n };
+}
