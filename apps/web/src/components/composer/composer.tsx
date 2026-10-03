@@ -1,18 +1,11 @@
 "use client";
 
-import { covenantAbi, kuruErrorName, kuruTestnet, presets, Template } from "@covenant/sdk";
+import { covenantAbi, kuruTestnet, presets, Template } from "@covenant/sdk";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";
-import {
-  type Address,
-  BaseError,
-  ContractFunctionRevertedError,
-  erc20Abi,
-  maxUint256,
-  parseEventLogs,
-} from "viem";
+import { type Address, erc20Abi, maxUint256, parseEventLogs } from "viem";
 import { useAccount, useWriteContract } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
@@ -21,6 +14,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { Loading } from "@/components/ui/states";
 import { publicClient, useBook } from "@/lib/chain";
 import { env } from "@/lib/env";
+import { describeError } from "@/lib/errors";
 import { blocksToDuration, units } from "@/lib/format";
 import { useMarket } from "@/lib/markets";
 import { DepthPreview } from "./depth-preview";
@@ -96,16 +90,6 @@ function Field({
       ) : null}
     </label>
   );
-}
-
-function reason(error: unknown) {
-  if (error instanceof BaseError) {
-    const revert = error.walk((e) => e instanceof ContractFunctionRevertedError);
-    if (revert instanceof ContractFunctionRevertedError)
-      return revert.data?.errorName ?? kuruErrorName(revert.raw) ?? revert.shortMessage;
-    return error.shortMessage;
-  }
-  return String(error);
 }
 
 export function Composer() {
@@ -219,7 +203,7 @@ export function Composer() {
       await queryClient.invalidateQueries();
       if (proposed) router.push(`/c/${proposed.args.id}`);
     } catch (error) {
-      setFailure(reason(error));
+      setFailure(describeError(error));
     } finally {
       setStep(null);
     }

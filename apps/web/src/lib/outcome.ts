@@ -1,12 +1,13 @@
 "use client";
 
-import { covenantAbi, kuruErrorName, outcomeMarketAbi } from "@covenant/sdk";
+import { covenantAbi, outcomeMarketAbi } from "@covenant/sdk";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { type Address, BaseError, ContractFunctionRevertedError, erc20Abi, maxUint256 } from "viem";
+import { type Address, erc20Abi, maxUint256 } from "viem";
 import { useAccount, useWriteContract } from "wagmi";
 import { publicClient } from "./chain";
 import { env } from "./env";
+import { describeError } from "./errors";
 import type { OutcomeMarket } from "./types";
 
 export interface Progress {
@@ -113,16 +114,6 @@ export function useOutcomeBalances(m: OutcomeMarket | undefined, collateral: Add
 
 type Action = "approve" | "mintSet" | "redeemSet" | "redeem";
 
-function reason(error: unknown) {
-  if (error instanceof BaseError) {
-    const revert = error.walk((e) => e instanceof ContractFunctionRevertedError);
-    if (revert instanceof ContractFunctionRevertedError)
-      return revert.data?.errorName ?? kuruErrorName(revert.raw) ?? revert.shortMessage;
-    return error.shortMessage;
-  }
-  return String(error);
-}
-
 export function useOutcomeActions(marketId: string | undefined, collateral: Address | undefined) {
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
@@ -164,7 +155,7 @@ export function useOutcomeActions(marketId: string | undefined, collateral: Addr
       });
       await queryClient.invalidateQueries();
     } catch (error) {
-      setMessage({ ok: false, text: reason(error) });
+      setMessage({ ok: false, text: describeError(error) });
     } finally {
       setPending(null);
     }

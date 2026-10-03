@@ -1,12 +1,12 @@
 "use client";
 
-import { covenantAbi, kuruErrorName, MAX_SLOTS } from "@covenant/sdk";
+import { covenantAbi, MAX_SLOTS } from "@covenant/sdk";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { BaseError, ContractFunctionRevertedError } from "viem";
 import { useAccount, useWriteContract } from "wagmi";
 import { publicClient } from "./chain";
 import { env } from "./env";
+import { describeError } from "./errors";
 
 const covenant = () => {
   if (!env.covenant) throw new Error("NEXT_PUBLIC_COVENANT_ADDRESS is not set");
@@ -71,16 +71,6 @@ type Action =
   | "settle"
   | "cancel";
 
-function revertReason(error: unknown): string {
-  if (error instanceof BaseError) {
-    const revert = error.walk((e) => e instanceof ContractFunctionRevertedError);
-    if (revert instanceof ContractFunctionRevertedError)
-      return revert.data?.errorName ?? kuruErrorName(revert.raw) ?? revert.shortMessage;
-    return error.shortMessage;
-  }
-  return error instanceof Error ? error.message : String(error);
-}
-
 export interface ActionState {
   pending: Action | null;
   result: { action: Action; ok: boolean; message: string; hash?: string } | null;
@@ -113,7 +103,7 @@ export function useCovenantActions(id: bigint) {
       });
       await queryClient.invalidateQueries();
     } catch (error) {
-      setState({ pending: null, result: { action, ok: false, message: revertReason(error) } });
+      setState({ pending: null, result: { action, ok: false, message: describeError(error) } });
     }
   }
 
