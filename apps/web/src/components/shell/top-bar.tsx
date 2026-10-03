@@ -4,7 +4,7 @@ import { Menu, Moon, Plus, Search, Sun } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 import { Kbd } from "@/components/ui/kbd";
 import { Logo } from "./logo";
@@ -91,10 +91,8 @@ export function TopBar({ onSearch }: { onSearch: () => void }) {
             <Kbd>K</Kbd>
           </span>
         </button>
-        <Link href="/new">
-          <Button size="sm" variant="primary">
-            <Plus size={13} /> <span className="hidden sm:inline">New covenant</span>
-          </Button>
+        <Link href="/new" className={buttonClass("primary", "sm")} aria-label="New covenant">
+          <Plus size={13} /> <span className="hidden sm:inline">New covenant</span>
         </Link>
         <Button
           size="sm"

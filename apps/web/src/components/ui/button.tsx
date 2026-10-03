@@ -16,22 +16,21 @@ const sizes: Record<Size, string> = {
   md: "h-7 px-2.5 text-sm gap-1.5",
 };
 
+/** Button styling for elements that are not buttons, such as links that look like one. */
+export function buttonClass(variant: Variant = "default", size: Size = "md", className?: string) {
+  return cn(
+    "inline-flex select-none items-center justify-center rounded-sm font-medium whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-40",
+    variants[variant],
+    sizes[size],
+    className,
+  );
+}
+
 export function Button({
   variant = "default",
   size = "md",
   className,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "inline-flex select-none items-center justify-center rounded-sm font-medium whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-40",
-        variants[variant],
-        sizes[size],
-        className,
-      )}
-      {...props}
-    />
-  );
+  return <button type="button" className={buttonClass(variant, size, className)} {...props} />;
 }
