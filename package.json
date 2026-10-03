@@ -8,6 +8,20 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "lint": "pnpm -r lint"
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "^24.19.1",
+    "tsx": "^4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "^5.0.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
