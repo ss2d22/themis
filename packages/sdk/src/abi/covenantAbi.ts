@@ -69,6 +69,24 @@ export const covenantAbi = [
   },
   {
     "type": "function",
+    "name": "claimKuru",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "claimRetainer",
     "inputs": [
       {
@@ -333,6 +351,11 @@ export const covenantAbi = [
                 "name": "termsHash",
                 "type": "bytes32",
                 "internalType": "bytes32"
+              },
+              {
+                "name": "template",
+                "type": "uint8",
+                "internalType": "enum Covenant.Template"
               }
             ]
           },
@@ -729,6 +752,25 @@ export const covenantAbi = [
   },
   {
     "type": "function",
+    "name": "netBought",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "netSold",
     "inputs": [
       {
@@ -1072,6 +1114,11 @@ export const covenantAbi = [
             "name": "termsHash",
             "type": "bytes32",
             "internalType": "bytes32"
+          },
+          {
+            "name": "template",
+            "type": "uint8",
+            "internalType": "enum Covenant.Template"
           }
         ]
       }
@@ -1626,6 +1673,31 @@ export const covenantAbi = [
   },
   {
     "type": "event",
+    "name": "KuruWithdrawalDeferred",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Observed",
     "inputs": [
       {
@@ -1929,6 +2001,11 @@ export const covenantAbi = [
   },
   {
     "type": "error",
+    "name": "KuruWithdrawalBlocked",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotPostOnly",
     "inputs": [
       {
@@ -2004,6 +2081,17 @@ export const covenantAbi = [
         "name": "limit",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SideNotAllowed",
+    "inputs": [
+      {
+        "name": "slot",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ]
   },

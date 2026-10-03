@@ -1,5 +1,13 @@
-/** Agreement terms in human units. Converted to raw units against the live market at setup time. */
+/** Matches `Covenant.Template`: a market-making mandate, a bid-only buyback, or an ask-only distribution. */
+export const Template = { TwoSided: 0, Buyback: 1, Distribution: 2 } as const;
+export type Template = (typeof Template)[keyof typeof Template];
+
+/**
+ * Agreement terms in human units. Converted to raw units against the live market at setup time. For a buyback the
+ * loan is a quote budget; for the other templates it is base.
+ */
 export interface Preset {
+  template: Template;
   loan: number;
   makerCollateral: number;
   bond: number;
@@ -40,6 +48,7 @@ const HOUR = 9_000;
 
 /** A launch-sized agreement: one-day term, hourly epochs, three failed hours to clawback. */
 export const launch: Preset = {
+  template: Template.TwoSided,
   loan: 2,
   makerCollateral: 6_000,
   bond: 300,
@@ -102,5 +111,30 @@ export const exchangeGrade: Preset = {
   risk: { ...launch.risk, priceBandBps: 200, sellWindowBlocks: 24 * HOUR },
 };
 
-export const presets = { launch, exchangeGrade, demo } as const;
+/** A treasury buyback: a quote budget spent through resting bids, at most one token per hour. */
+export const buyback: Preset = {
+  ...launch,
+  template: Template.Buyback,
+  loan: 3_000,
+  options: 0,
+  makerCollateral: 0,
+  retainer: 100,
+  strikePremiumBps: 0,
+  ob: { ...launch.ob, minBidDepth: 300, minAskDepth: 0 },
+  risk: { ...launch.risk, maxNetSell: 1, sellWindowBlocks: HOUR },
+};
+
+/** An unlock sold into the book through asks only, at most a quarter of a token per hour. */
+export const distribution: Preset = {
+  ...launch,
+  template: Template.Distribution,
+  options: 0,
+  makerCollateral: 0,
+  retainer: 100,
+  strikePremiumBps: 0,
+  ob: { ...launch.ob, minBidDepth: 0, minAskDepth: 300 },
+  risk: { ...launch.risk, maxNetSell: 0.25, sellWindowBlocks: HOUR },
+};
+
+export const presets = { launch, exchangeGrade, buyback, distribution, demo } as const;
 export type PresetName = keyof typeof presets;
