@@ -27,6 +27,14 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
     uint256 internal constant MAX_SLOTS = 62;
     uint256 internal constant FEE_DENOMINATOR = 10_000_000;
 
+    /// @dev TwoSided is a market-making mandate. Buyback rests bids only, funded by a quote budget. Distribution rests
+    ///      asks only, selling the issuer's tokens at a capped pace.
+    enum Template {
+        TwoSided,
+        Buyback,
+        Distribution
+    }
+
     enum Status {
         None,
         Proposed,
@@ -82,6 +90,7 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
         Obligations ob;
         Risk risk;
         bytes32 termsHash;
+        Template template;
     }
 
     struct Engagement {
@@ -214,6 +223,7 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
     error ReduceAfterBlockNotAllowed(uint8 slot);
     error OutsidePriceBand(uint8 slot, uint32 price, uint32 refPrice);
     error SellLimitExceeded(uint256 exposure, uint256 limit);
+    error SideNotAllowed(uint8 slot);
     error EpochNotOver();
     error BackstopLocked();
     error NothingToClaim();
@@ -247,7 +257,7 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
         });
         if (e.base == address(0) || e.quote == address(0)) revert InvalidTerms();
 
-        e.base.safeTransferFrom(msg.sender, address(this), t.loan);
+        _loanToken(e).safeTransferFrom(msg.sender, address(this), t.loan);
         if (t.retainer > 0) e.quote.safeTransferFrom(msg.sender, address(this), t.retainer);
 
         emit Proposed(id, msg.sender, t.maker, address(t.market), t.termsHash);
@@ -259,7 +269,7 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
         if (e.status != Status.Proposed) revert InvalidStatus();
         if (msg.sender != e.issuer) revert Unauthorized();
         e.status = Status.Cancelled;
-        owed[e.issuer][e.base] += e.terms.loan;
+        owed[e.issuer][_loanToken(e)] += e.terms.loan;
         owed[e.issuer][e.quote] += e.terms.retainer;
         emit Cancelled(id);
     }
@@ -274,7 +284,8 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
         uint256 quoteIn = uint256(t.makerCollateral) + t.bond;
         if (quoteIn > 0) e.quote.safeTransferFrom(msg.sender, address(this), quoteIn);
 
-        e.account = _openAccount(e.base, e.quote, t.loan, t.makerCollateral);
+        bool buyback = t.template == Template.Buyback;
+        e.account = _openAccount(e.base, e.quote, buyback ? 0 : t.loan, buyback ? t.loan : t.makerCollateral);
         engagementOfAccount[e.account] = id;
 
         uint64 start = uint64(block.number);
@@ -286,7 +297,7 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
         e.refPrice = t.initialPrice;
         e.refBlock = start;
         e.sellWindowStart = start;
-        e.windowHoldings = t.loan;
+        e.windowHoldings = buyback ? 0 : t.loan;
         e.bondLeft = t.bond;
 
         makerStats[t.maker].engagements++;
@@ -363,6 +374,7 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
             }
             if (op.flags & ~KuruCodec.FLAG_BUY != KuruCodec.FLAG_ALO) revert NotPostOnly(op.slot);
             if (op.minSizeAfterBlock != 0) revert ReduceAfterBlockNotAllowed(op.slot);
+            if (!_sideAllowed(e.terms.template, KuruCodec.isBuy(op))) revert SideNotAllowed(op.slot);
             if (!MarketMath.withinBps(op.price, e.refPrice, e.terms.risk.priceBandBps)) {
                 revert OutsidePriceBand(op.slot, op.price, e.refPrice);
             }
@@ -375,7 +387,7 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
             mask |= bit;
         }
         e.liveMask = mask;
-        _checkSellLimit(id, 0);
+        _checkFlowLimit(id);
 
         e.terms.market.replaceBySlotPacked(e.account, ops);
 
@@ -466,7 +478,7 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
             emit BountyPaid(id, msg.sender, bounty);
         }
 
-        uint64 position = _mintBackstop(id, r.issuerBase, r.issuerQuote);
+        uint64 position = t.template == Template.TwoSided ? _mintBackstop(id, r.issuerBase, r.issuerQuote) : 0;
         _distribute(id, r, position != 0);
         makerStats[t.maker].clawbacks++;
 
@@ -580,7 +592,7 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
 
         uint32 price = _refreshPrice(e, s.isBuy, ctx.fillPrice);
         bool replenish = price != 0 && e.status == Status.Active && block.number < e.endBlock;
-        if (replenish && !s.isBuy) replenish = _sellHeadroom(id, s.size);
+        if (replenish) replenish = _flowHeadroom(id, s.isBuy, s.size);
 
         emit Filled(id, ctx.filledSlotIdx, ctx.fillPrice, s.size, s.isBuy, replenish);
         if (!replenish) return (KuruCodec.HOOK_NOOP, 0, 0);
@@ -625,6 +637,13 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
         from = e.startBlock + uint64(epoch) * len;
         to = from + len;
         if (to > e.endBlock) to = e.endBlock;
+    }
+
+    /// @notice Net base bought in the current window, in raw atoms. Limits buybacks.
+    function netBought(uint256 id) public view returns (uint256) {
+        Engagement storage e = _engagements[id];
+        uint256 holdings = _baseHoldings(e);
+        return holdings > e.windowHoldings ? holdings - e.windowHoldings : 0;
     }
 
     /// @notice Net base sold in the current sell window, in raw atoms.
@@ -724,6 +743,14 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
         uint256 askBase = baseReserved > outsideAskBase ? baseReserved - outsideAskBase : 0;
         m.askDepth = e.units.quoteFor(askBase, m.refPrice);
 
+        if (t.template == Template.Buyback) {
+            m.compliant = m.bestBid != 0 && m.bidDepth >= t.ob.minBidDepth;
+            return m;
+        }
+        if (t.template == Template.Distribution) {
+            m.compliant = m.bestAsk != 0 && m.askDepth >= t.ob.minAskDepth;
+            return m;
+        }
         if (m.bestBid == 0 || m.bestAsk == 0) return m;
         m.spreadBps = MarketMath.spreadBps(m.bestBid, m.bestAsk, m.refPrice);
         m.compliant = m.spreadBps <= m.allowedSpreadBps && m.bidDepth >= t.ob.minBidDepth
@@ -790,27 +817,42 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
         e.windowHoldings = _baseHoldings(e);
     }
 
-    /// @dev Reverts if every resting ask filling, plus `extra` base, would exceed the window's sell limit.
-    function _checkSellLimit(uint256 id, uint256 extra) internal view {
+    /// @dev Reverts if every resting order on the limited side filling would move more base than the window allows.
+    ///      Sells are limited for mandates and distributions; buys are limited for buybacks.
+    function _checkFlowLimit(uint256 id) internal view {
         Engagement storage e = _engagements[id];
-        uint256 exposure = netSold(id) + _askExposure(id) + extra;
+        bool buys = e.terms.template == Template.Buyback;
+        uint256 exposure = (buys ? netBought(id) : netSold(id)) + _exposure(id, buys);
         if (exposure > e.terms.risk.maxNetSell) revert SellLimitExceeded(exposure, e.terms.risk.maxNetSell);
     }
 
-    function _sellHeadroom(uint256 id, uint96 size) internal view returns (bool) {
+    function _flowHeadroom(uint256 id, bool isBuy, uint96 size) internal view returns (bool) {
         Engagement storage e = _engagements[id];
-        return netSold(id) + _askExposure(id) + e.units.baseAtoms(size) <= e.terms.risk.maxNetSell;
+        bool buys = e.terms.template == Template.Buyback;
+        if (isBuy != buys) return true;
+        uint256 used = (buys ? netBought(id) : netSold(id)) + _exposure(id, buys);
+        return used + e.units.baseAtoms(size) <= e.terms.risk.maxNetSell;
     }
 
-    function _askExposure(uint256 id) internal view returns (uint256 atoms) {
+    function _exposure(uint256 id, bool isBuy) internal view returns (uint256 atoms) {
         Engagement storage e = _engagements[id];
         Slot[MAX_SLOTS] storage slots = _slots[id];
         uint64 mask = e.liveMask;
         while (mask != 0) {
             uint8 i = _lowestBit(mask);
             mask &= mask - 1;
-            if (!slots[i].isBuy) atoms += e.units.baseAtoms(slots[i].size);
+            if (slots[i].isBuy == isBuy) atoms += e.units.baseAtoms(slots[i].size);
         }
+    }
+
+    function _sideAllowed(Template template, bool isBuy) internal pure returns (bool) {
+        if (template == Template.Buyback) return isBuy;
+        if (template == Template.Distribution) return !isBuy;
+        return true;
+    }
+
+    function _loanToken(Engagement storage e) internal view returns (address) {
+        return e.terms.template == Template.Buyback ? e.quote : e.base;
     }
 
     function _baseHoldings(Engagement storage e) internal view returns (uint256) {
@@ -844,20 +886,27 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
         t.market.cancelAllOrders(e.account);
         e.liveMask = 0;
 
-        r = Settlement.compute(
-            e.units,
-            Settlement.Input({
-                loan: t.loan,
-                baseHeld: accountCore.getBalance(e.account, e.base),
-                quoteHeld: accountCore.getBalance(e.account, e.quote),
-                vested: vested(id),
-                extraExercise: extraExercise,
-                strike: t.strike,
-                refPrice: e.refPrice,
-                penaltyBps: t.risk.penaltyBps,
-                bond: e.bondLeft
-            })
-        );
+        if (t.template != Template.TwoSided) {
+            // The account holds only the issuer's tokens, budget and what they turned into.
+            r.issuerBase = accountCore.getBalance(e.account, e.base);
+            r.issuerQuote = accountCore.getBalance(e.account, e.quote);
+            r.bondToMaker = e.bondLeft;
+        } else {
+            r = Settlement.compute(
+                e.units,
+                Settlement.Input({
+                    loan: t.loan,
+                    baseHeld: accountCore.getBalance(e.account, e.base),
+                    quoteHeld: accountCore.getBalance(e.account, e.quote),
+                    vested: vested(id),
+                    extraExercise: extraExercise,
+                    strike: t.strike,
+                    refPrice: e.refPrice,
+                    penaltyBps: t.risk.penaltyBps,
+                    bond: e.bondLeft
+                })
+            );
+        }
         e.bondLeft = 0;
 
         MakerStats storage stats = makerStats[t.maker];
@@ -977,6 +1026,12 @@ contract Covenant is IPostFillHook, ReentrancyGuard {
             && ob.maxCreditBlocks > 0 && ob.uptimeTargetBps <= MarketMath.BPS && ob.sustainedBreachEpochs > 0
             && ob.volatileSpreadBps >= ob.maxSpreadBps && rk.priceBandBps > 0 && rk.sellWindowBlocks > 0
             && rk.breachSlashBps <= MarketMath.BPS;
+        if (t.template == Template.Buyback) {
+            ok = ok && t.options == 0 && t.makerCollateral == 0 && ob.minBidDepth > 0;
+        }
+        if (t.template == Template.Distribution) {
+            ok = ok && t.options == 0 && t.makerCollateral == 0 && ob.minAskDepth > 0;
+        }
         if (!ok) revert InvalidTerms();
     }
 }
