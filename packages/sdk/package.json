@@ -1,0 +1,17 @@
+{
+  "name": "@covenant/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "forge build --root ../../contracts && tsx scripts/generate-abis.ts",
+    "typecheck": "tsc -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "viem": "^2.57.2"
+  }
+}
