@@ -7,6 +7,8 @@ import {
   kuruTestnet,
   type MarketUnits,
   outcomeMarketAbi,
+  type PresetName,
+  presets,
   readMarketUnits,
 } from "@covenant/sdk";
 import {
@@ -25,7 +27,6 @@ import {
 import { chainFor, publicClientFor, send, walletFor } from "../chain.js";
 import { type Config, required } from "../config.js";
 import type { Logger } from "../log.js";
-import { type PresetName, presets } from "./presets.js";
 
 type Client = ReturnType<typeof publicClientFor>;
 type Wallet = ReturnType<typeof walletFor>;

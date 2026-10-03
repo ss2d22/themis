@@ -1,4 +1,5 @@
 import { parseArgs } from "node:util";
+import type { PresetName } from "@covenant/sdk";
 import { runAdversary } from "./bots/adversary.js";
 import { defaultMarketMaker, runMarketMaker } from "./bots/market-maker.js";
 import { runTaker } from "./bots/taker.js";
@@ -6,7 +7,6 @@ import { runWatchtower } from "./bots/watchtower.js";
 import { loadConfig } from "./config.js";
 import { createLogger } from "./log.js";
 import { fundFork, setupEngagement, setupOutcome, setupTaker } from "./setup/index.js";
-import type { PresetName } from "./setup/presets.js";
 
 const usage = `usage: pnpm start <command> [options]
 

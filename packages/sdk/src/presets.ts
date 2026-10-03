@@ -86,5 +86,21 @@ export const demo: Preset = {
   risk: { ...launch.risk, sellWindowBlocks: 2 * HOUR, backstopLockBlocks: 300 },
 };
 
-export const presets = { launch, demo } as const;
+/** Tighter, deeper book in the style of a centralised-exchange mandate. */
+export const exchangeGrade: Preset = {
+  ...launch,
+  termBlocks: 7 * 24 * HOUR,
+  ob: {
+    ...launch.ob,
+    maxSpreadBps: 25,
+    volatileSpreadBps: 75,
+    depthBandBps: 100,
+    uptimeTargetBps: 9_500,
+    minBidDepth: 1_000,
+    minAskDepth: 1_000,
+  },
+  risk: { ...launch.risk, priceBandBps: 200, sellWindowBlocks: 24 * HOUR },
+};
+
+export const presets = { launch, exchangeGrade, demo } as const;
 export type PresetName = keyof typeof presets;
