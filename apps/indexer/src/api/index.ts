@@ -13,7 +13,7 @@ import schema, {
 } from "ponder:schema";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { and, asc, client, desc, eq, graphql, gte } from "ponder";
+import { and, asc, client, desc, eq, graphql, gte, sql } from "ponder";
 import { grade } from "../grade";
 
 const app = new Hono();
@@ -137,6 +137,31 @@ app.get("/makers", async () => {
   });
   leaderboard.sort((a, b) => b.uptimeBps - a.uptimeBps);
   return json(leaderboard);
+});
+
+/** Activity per time bucket, for traction charts. `bucket` is in seconds. */
+app.get("/timeseries", async (c) => {
+  const requested = Math.trunc(Number(c.req.query("bucket") ?? 3_600));
+  const bucket = Number.isFinite(requested) ? Math.min(86_400, Math.max(60, requested)) : 3_600;
+  // Inlined so the select and group by are the same expression; it is a clamped integer, never user text.
+  const size = sql.raw(String(bucket));
+  const series = async (
+    table: typeof fill | typeof quote | typeof observation | typeof complianceChange,
+    value = sql<string>`count(*)`,
+    where?: ReturnType<typeof eq>,
+  ) => {
+    const t = sql<string>`floor(${table.timestamp} / ${size}) * ${size}`;
+    const rows = await db.select({ t, v: value }).from(table).where(where).groupBy(t).orderBy(t);
+    return rows.map((r) => ({ time: Number(r.t), value: Number(r.v) }));
+  };
+  const [fills, quotes, observations, credited, breaches] = await Promise.all([
+    series(fill),
+    series(quote),
+    series(observation),
+    series(observation, sql<string>`sum(${observation.credited})`),
+    series(complianceChange, sql<string>`count(*)`, eq(complianceChange.compliant, false)),
+  ]);
+  return json({ bucket, fills, quotes, observations, credited, breaches });
 });
 
 app.get("/watchers", async () =>
