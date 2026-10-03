@@ -1,5 +1,5 @@
 import { kuruAccountCoreAbi, kuruOrderBookAbi, kuruTestnet, readMarketUnits } from "@covenant/sdk";
-import { publicClientFor, send, walletFor } from "../chain.js";
+import { publicClientFor, recover, send, walletFor } from "../chain.js";
 import { type Config, required } from "../config.js";
 import type { Logger } from "../log.js";
 import { jitter, sleep } from "../time.js";
@@ -40,44 +40,48 @@ export async function runTaker(config: Config, log: Logger, options = defaultTak
   log.info({ market, userId }, "taker started");
 
   for (let trade = 1; ; trade++) {
-    const isBuy = Math.random() < 0.5;
-    const notional =
-      trade % options.whaleEvery === 0 ? options.whaleQuote : jitter(options.minQuote, options.maxQuote);
-    const [bid, ask] = await client.readContract({
-      address: market,
-      abi: kuruOrderBookAbi,
-      functionName: "bestBidAsk",
-    });
-    const quoteAtoms = BigInt(Math.floor(notional * 10 ** units.quoteDecimals));
-    const amountIn = isBuy
-      ? quoteAtoms
-      : (quoteAtoms * units.sizePrecision * units.pricePrecision * units.baseSizeMultiplier) /
-        (BigInt(bid || ask) * 10n ** BigInt(units.quoteDecimals));
+    try {
+      const isBuy = Math.random() < 0.5;
+      const notional =
+        trade % options.whaleEvery === 0 ? options.whaleQuote : jitter(options.minQuote, options.maxQuote);
+      const [bid, ask] = await client.readContract({
+        address: market,
+        abi: kuruOrderBookAbi,
+        functionName: "bestBidAsk",
+      });
+      const quoteAtoms = BigInt(Math.floor(notional * 10 ** units.quoteDecimals));
+      const amountIn = isBuy
+        ? quoteAtoms
+        : (quoteAtoms * units.sizePrecision * units.pricePrecision * units.baseSizeMultiplier) /
+          (BigInt(bid || ask) * 10n ** BigInt(units.quoteDecimals));
 
-    const estimate = await client.readContract({
-      address: market,
-      abi: kuruOrderBookAbi,
-      functionName: "estimateSwap",
-      args: [isBuy, amountIn],
-    });
-    const minOut = (estimate.amountOut * (10_000n - options.slippageBps)) / 10_000n;
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 60);
-    const result = await send(client, wallet, {
-      address: market,
-      abi: kuruOrderBookAbi,
-      functionName: "swap",
-      args: [userId, isBuy, amountIn, minOut, deadline],
-    });
-    log.info(
-      {
-        trade,
-        side: isBuy ? "buy" : "sell",
-        notional: Math.round(notional),
-        ok: result.ok,
-        ...(result.ok ? { tx: result.hash } : { reason: result.reason }),
-      },
-      "swap",
-    );
-    await sleep(jitter(options.minDelayMs, options.maxDelayMs));
+      const estimate = await client.readContract({
+        address: market,
+        abi: kuruOrderBookAbi,
+        functionName: "estimateSwap",
+        args: [isBuy, amountIn],
+      });
+      const minOut = (estimate.amountOut * (10_000n - options.slippageBps)) / 10_000n;
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 60);
+      const result = await send(client, wallet, {
+        address: market,
+        abi: kuruOrderBookAbi,
+        functionName: "swap",
+        args: [userId, isBuy, amountIn, minOut, deadline],
+      });
+      log.info(
+        {
+          trade,
+          side: isBuy ? "buy" : "sell",
+          notional: Math.round(notional),
+          ok: result.ok,
+          ...(result.ok ? { tx: result.hash } : { reason: result.reason }),
+        },
+        "swap",
+      );
+      await sleep(jitter(options.minDelayMs, options.maxDelayMs));
+    } catch (error) {
+      await recover(log, error);
+    }
   }
 }

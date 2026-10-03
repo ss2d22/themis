@@ -1,6 +1,6 @@
 import { covenantAbi, encodeCancel, encodeOps, encodeQuote, readMarketUnits, toRawSize } from "@covenant/sdk";
 import { type Hex, numberToHex } from "viem";
-import { describeRevert, publicClientFor, send, walletFor } from "../chain.js";
+import { describeRevert, publicClientFor, recover, send, walletFor } from "../chain.js";
 import { type Config, required } from "../config.js";
 import { CovenantReader, Status } from "../covenant.js";
 import type { Logger } from "../log.js";
@@ -106,12 +106,16 @@ export async function runAdversary(config: Config, log: Logger, onchain: boolean
 
   let last = -1;
   for (;;) {
-    const now = await reader.engagement(id);
-    if (now.status !== last) {
-      log.info({ status: now.status, failingStreak: now.failingStreak }, "engagement status");
-      last = now.status;
+    try {
+      const now = await reader.engagement(id);
+      if (now.status !== last) {
+        log.info({ status: now.status, failingStreak: now.failingStreak }, "engagement status");
+        last = now.status;
+      }
+      if (now.status === Status.ClawedBack || now.status === Status.Settled) return;
+      await sleep(5_000);
+    } catch (error) {
+      await recover(log, error);
     }
-    if (now.status === Status.ClawedBack || now.status === Status.Settled) return;
-    await sleep(5_000);
   }
 }

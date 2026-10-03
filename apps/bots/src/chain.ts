@@ -74,3 +74,16 @@ export function describeRevert(error: unknown): { reason: string; args?: readonl
   }
   return { reason: String(error) };
 }
+
+/**
+ * Logs a failed loop iteration and waits before the next one. RPC timeouts and dropped connections are routine
+ * over days of running; a bot should ride them out rather than exit.
+ */
+export async function recover(
+  log: { warn: (fields: object, message: string) => void },
+  error: unknown,
+  waitMs = 3_000,
+) {
+  log.warn({ reason: describeRevert(error).reason }, "iteration failed, retrying");
+  await new Promise((resolve) => setTimeout(resolve, waitMs + Math.random() * waitMs));
+}

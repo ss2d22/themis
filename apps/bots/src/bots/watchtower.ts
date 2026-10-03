@@ -1,6 +1,6 @@
 import { covenantAbi, outcomeMarketAbi } from "@covenant/sdk";
 import type { Address } from "viem";
-import { publicClientFor, send, walletFor } from "../chain.js";
+import { publicClientFor, recover, send, walletFor } from "../chain.js";
 import { type Config, required } from "../config.js";
 import { CovenantReader, Status } from "../covenant.js";
 import type { Logger } from "../log.js";
@@ -23,93 +23,97 @@ export async function runWatchtower(config: Config, log: Logger, intervalMs = 2_
   log.info({ covenant, outcomes, watcher: wallet.account.address }, "watchtower started");
 
   for (;;) {
-    const [block, count] = await Promise.all([client.getBlockNumber(), reader.count()]);
+    try {
+      const [block, count] = await Promise.all([client.getBlockNumber(), reader.count()]);
 
-    for (let id = 1n; id <= count; id++) {
-      const e = await reader.engagement(id);
+      for (let id = 1n; id <= count; id++) {
+        const e = await reader.engagement(id);
 
-      if (e.status === Status.ClawbackEligible) {
-        const r = await send(client, wallet, {
+        if (e.status === Status.ClawbackEligible) {
+          const r = await send(client, wallet, {
+            address: covenant,
+            abi: covenantAbi,
+            functionName: "clawback",
+            args: [id],
+          });
+          log.info(
+            { id: id.toString(), ok: r.ok, ...(r.ok ? { tx: r.hash } : { reason: r.reason }) },
+            "clawback",
+          );
+          continue;
+        }
+        if (e.status !== Status.Active) continue;
+
+        if (block >= e.endBlock + BigInt(e.terms.exerciseWindowBlocks)) {
+          const r = await send(client, wallet, {
+            address: covenant,
+            abi: covenantAbi,
+            functionName: "settle",
+            args: [id, 0n],
+          });
+          log.info(
+            { id: id.toString(), ok: r.ok, ...(r.ok ? { tx: r.hash } : { reason: r.reason }) },
+            "settle",
+          );
+          continue;
+        }
+
+        const [from, to] = await client.readContract({
           address: covenant,
           abi: covenantAbi,
-          functionName: "clawback",
-          args: [id],
+          functionName: "epochBounds",
+          args: [id, e.nextEpoch],
         });
-        log.info(
-          { id: id.toString(), ok: r.ok, ...(r.ok ? { tx: r.hash } : { reason: r.reason }) },
-          "clawback",
-        );
-        continue;
-      }
-      if (e.status !== Status.Active) continue;
+        if (from < e.endBlock && block >= to) {
+          const r = await send(client, wallet, {
+            address: covenant,
+            abi: covenantAbi,
+            functionName: "closeEpoch",
+            args: [id],
+          });
+          log.info(
+            {
+              id: id.toString(),
+              epoch: e.nextEpoch,
+              ok: r.ok,
+              ...(r.ok ? { tx: r.hash } : { reason: r.reason }),
+            },
+            "epoch closed",
+          );
+          continue;
+        }
 
-      if (block >= e.endBlock + BigInt(e.terms.exerciseWindowBlocks)) {
-        const r = await send(client, wallet, {
-          address: covenant,
-          abi: covenantAbi,
-          functionName: "settle",
-          args: [id, 0n],
-        });
-        log.info(
-          { id: id.toString(), ok: r.ok, ...(r.ok ? { tx: r.hash } : { reason: r.reason }) },
-          "settle",
-        );
-        continue;
-      }
-
-      const [from, to] = await client.readContract({
-        address: covenant,
-        abi: covenantAbi,
-        functionName: "epochBounds",
-        args: [id, e.nextEpoch],
-      });
-      if (from < e.endBlock && block >= to) {
-        const r = await send(client, wallet, {
-          address: covenant,
-          abi: covenantAbi,
-          functionName: "closeEpoch",
-          args: [id],
-        });
-        log.info(
-          {
-            id: id.toString(),
-            epoch: e.nextEpoch,
-            ok: r.ok,
-            ...(r.ok ? { tx: r.hash } : { reason: r.reason }),
-          },
-          "epoch closed",
-        );
-        continue;
+        const m = await reader.metrics(id);
+        if (m.compliant) continue;
+        const startsClock = e.lastCompliant;
+        const graceOver =
+          !e.breachReported &&
+          e.nonCompliantSince !== 0n &&
+          block >= e.nonCompliantSince + BigInt(e.terms.ob.graceBlocks);
+        if (startsClock || graceOver) {
+          const r = await send(client, wallet, {
+            address: covenant,
+            abi: covenantAbi,
+            functionName: "poke",
+            args: [id],
+          });
+          log.info(
+            {
+              id: id.toString(),
+              report: graceOver ? "breach" : "dip",
+              ok: r.ok,
+              ...(r.ok ? { tx: r.hash } : { reason: r.reason }),
+            },
+            "poke",
+          );
+        }
       }
 
-      const m = await reader.metrics(id);
-      if (m.compliant) continue;
-      const startsClock = e.lastCompliant;
-      const graceOver =
-        !e.breachReported &&
-        e.nonCompliantSince !== 0n &&
-        block >= e.nonCompliantSince + BigInt(e.terms.ob.graceBlocks);
-      if (startsClock || graceOver) {
-        const r = await send(client, wallet, {
-          address: covenant,
-          abi: covenantAbi,
-          functionName: "poke",
-          args: [id],
-        });
-        log.info(
-          {
-            id: id.toString(),
-            report: graceOver ? "breach" : "dip",
-            ok: r.ok,
-            ...(r.ok ? { tx: r.hash } : { reason: r.reason }),
-          },
-          "poke",
-        );
-      }
+      if (outcomes) await resolveOutcomes(client, wallet, outcomes, covenant, block, log);
+      await sleep(intervalMs);
+    } catch (error) {
+      await recover(log, error);
     }
-
-    if (outcomes) await resolveOutcomes(client, wallet, outcomes, covenant, block, log);
-    await sleep(intervalMs);
   }
 }
 
