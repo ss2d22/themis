@@ -1,0 +1,17 @@
+{
+  "name": "@covenant/bots",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@covenant/sdk": "workspace:*",
+    "pino": "^10.4.0",
+    "viem": "^2.57.2",
+    "zod": "^4.6.5"
+  }
+}
