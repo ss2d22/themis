@@ -29,3 +29,6 @@ notes/
 .idea/
 .vscode/
 *.log
+
+# local deployments
+contracts/deployments/31337.json
