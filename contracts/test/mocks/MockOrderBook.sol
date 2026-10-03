@@ -52,6 +52,8 @@ contract MockOrderBook {
     mapping(uint40 => mapping(uint8 => Order)) internal _orders;
     mapping(uint40 => address) public getPostFillHook;
     mapping(uint64 => Position) internal _positions;
+    /// @dev Orders that arrived without post-only or with reduce-after-block, per account.
+    mapping(uint40 => uint256) public unsafePlacements;
 
     error Unauthorized();
     error HookAccessDenied();
@@ -151,6 +153,7 @@ contract MockOrderBook {
             KuruCodec.SlotOp memory op = KuruCodec.decodeOp(bytes32(ops[k * 32:(k + 1) * 32]));
             _cancel(user, op.slot);
             if (KuruCodec.isCancel(op)) continue;
+            if (op.flags & KuruCodec.FLAG_ALO == 0 || op.minSizeAfterBlock != 0) unsafePlacements[user]++;
             _place(user, op.slot, KuruCodec.isBuy(op), op.price, op.size, op.flags & KuruCodec.FLAG_ALO != 0);
         }
     }
